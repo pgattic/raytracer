@@ -1,0 +1,37 @@
+cabal-version:      3.0
+name:               raytracer
+version:            0.1.0.0
+synopsis:           Simple raytracer written in Haskell
+description:        Simple raytracer written in Haskell
+license:            MIT
+license-file:       LICENSE
+author:             Preston Corless
+maintainer:         pgattic@gmail.com
+
+-- A copyright notice.
+-- copyright:
+
+build-type:         Simple
+extra-doc-files:    README.md
+
+-- Extra source files to be distributed with the package, such as examples, or a tutorial module.
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+executable raytracer
+    -- Import common warning flags.
+    import:           warnings
+
+    -- .hs or .lhs file containing the Main module.
+    main-is:          Main.hs
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base ^>=4.20.2.0
+    hs-source-dirs:   src
+    default-language: Haskell2010
