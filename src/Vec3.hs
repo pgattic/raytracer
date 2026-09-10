@@ -1,4 +1,4 @@
-module Vec3 (Vec3(..), (+^), (-^), (.^), (*^), (/^), mag, cross, unit) where
+module Vec3 (Vec3(..), (+^), (-^), (.^), (*^), (/^), mag, mag_squared, cross, unit) where
 
 ---------------------------------------------
 -- Generic Vec3 type with common functions --
@@ -38,7 +38,10 @@ vec /^ s = vec *^ (1/s)
 
 -- Magnitude
 mag :: Vec3 -> Double
-mag v = sqrt (l1 (pairwise (*) v v))
+mag v = sqrt (mag_squared v)
+
+mag_squared :: Vec3 -> Double
+mag_squared v = (l1 (pairwise (*) v v))
 
 cross :: Vec3 -> Vec3 -> Vec3
 cross (Vec3 x1 y1 z1) (Vec3 x2 y2 z2) = Vec3
