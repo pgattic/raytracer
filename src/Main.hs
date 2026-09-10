@@ -1,17 +1,29 @@
 module Main (main) where
 
 import Image (Image(..), toPPM)
-import Vec3(Vec3(..), unit, (*^), (+^))
+import Vec3(Vec3(..), unit, (*^), (+^), (-^), (.^))
 import Camera
 import Ray
 import Color (Color)
+
+hitSphere :: Vec3 -> Double -> Ray -> Bool
+hitSphere center rad ray = let
+    oc = center -^ origin ray;
+    a = (direction ray) .^ (direction ray);
+    b = (direction ray .^ oc) * (-2.0);
+    c = (oc .^ oc) - (rad * rad)
+    discriminant = b*b - (4 * a * c)
+  in
+    discriminant >= 0
 
 rayColor :: Ray -> Color
 rayColor r = let
     (Vec3 _ y _) = unit (direction r);
     a = 0.5 * (y + 1)
   in
-    ((Vec3 1 1 1) *^ (1-a)) +^ ((Vec3 0.5 0.7 1.0) *^ a)
+    if hitSphere (Vec3 0 0 (-1)) 0.5 r
+      then Vec3 1 0 0
+      else ((Vec3 1 1 1) *^ (1-a)) +^ ((Vec3 0.5 0.7 1.0) *^ a)
 
 main :: IO ()
 main = let
