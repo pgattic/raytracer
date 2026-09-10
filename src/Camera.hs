@@ -33,7 +33,7 @@ viewportUpperLeft :: Camera -> Vec3
 viewportUpperLeft c = (cameraCenter c) -^ (Vec3 0 0 (focalLength c)) -^ ((viewportV c) /^ 2) -^ ((viewportU c) /^ 2)
 
 pixel00Loc :: Camera -> Vec3
-pixel00Loc c = (viewportUpperLeft c) +^ ((((pxDeltaU c) *^ 0.5) +^ (pxDeltaV c) *^ 0.5))
+pixel00Loc c = (viewportUpperLeft c) +^ ((((pxDeltaU c) *^ 0.5) +^ ((pxDeltaV c) *^ 0.5)))
 
 px2ray :: Camera -> Vec3 -> Ray
 px2ray c px =
@@ -45,7 +45,7 @@ xyPixel c xi yi =
   let
     x = fromIntegral xi;
     y = fromIntegral yi
-  in (pixel00Loc c) +^ ((((pxDeltaU c) *^ x) +^ (pxDeltaV c) *^ y))
+  in (pixel00Loc c) +^ ((((pxDeltaU c) *^ x) +^ ((pxDeltaV c) *^ y)))
 
 xyRay :: Camera -> Int -> Int -> Ray
 xyRay c x y = px2ray c (xyPixel c x y)

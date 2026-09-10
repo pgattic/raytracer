@@ -49,3 +49,7 @@ cross (Vec3 x1 y1 z1) (Vec3 x2 y2 z2) = Vec3
 unit :: Vec3 -> Vec3
 unit v = let m = mag v in
   if m == 0 then (Vec3 0 0 0) else v /^ m
+
+infixl 6 +^, -^
+infixl 7 *^, /^
+infixl 7 .^
