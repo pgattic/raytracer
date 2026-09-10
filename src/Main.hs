@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Image (Image(..), toPPM)
-import Vec3(Vec3(..), unit, (*^), (+^), (-^), (.^))
+import Vec3 (Vec3(..), unit, mag_squared, (*^), (+^), (-^), (.^))
 import Camera
 import Ray
 import Color (Color)
@@ -9,14 +9,14 @@ import Color (Color)
 hitSphere :: Vec3 -> Double -> Ray -> Double
 hitSphere center rad ray = let
     oc = center -^ origin ray;
-    a = (direction ray) .^ (direction ray);
-    b = (direction ray .^ oc) * (-2.0);
-    c = (oc .^ oc) - (rad * rad)
-    discriminant = b*b - (4 * a * c)
+    a = mag_squared (direction ray)
+    h = (direction ray .^ oc);
+    c = (mag_squared oc) - (rad * rad);
+    discriminant = h*h - a*c
   in
     if discriminant < 0
       then (-1)
-      else ((-b) - (sqrt discriminant)) / (2 * a)
+      else (h - (sqrt discriminant)) / a
 
 rayColor :: Ray -> Color
 rayColor r = let
