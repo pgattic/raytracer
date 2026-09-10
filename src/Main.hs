@@ -1,8 +1,17 @@
 module Main (main) where
 
-import Image (toPPM, exampleImage)
-import Vec3(Vec3(..))
+import Image (Image(..), toPPM)
+import Vec3(Vec3(..), unit, (*^), (+^))
 import Camera
+import Ray
+import Color (Color)
+
+rayColor :: Ray -> Color
+rayColor r = let
+    (Vec3 _ y _) = unit (direction r);
+    a = 0.5 * (y + 1)
+  in
+    ((Vec3 1 1 1) *^ (1-a)) +^ ((Vec3 0.5 0.7 1.0) *^ a)
 
 main :: IO ()
 main = let
@@ -12,9 +21,11 @@ main = let
       viewportHeight = 2,
       focalLength = 1,
       cameraCenter = Vec3 0 0 0
-    }
+    };
+    grid = [(x, y) | y <- [0 .. imageHeight cam - 1], x <- [0 .. imageWidth cam - 1]]
+    rays = map (\(x, y) -> (xyRay cam) x y) grid;
+    colors = map rayColor rays;
+    image = Image { width = imageWidth cam, height = imageHeight cam, pixels = colors };
   in do
-  putStrLn (toPPM exampleImage)
-  putStrLn (show (imageHeight cam))
-  putStrLn (show (imageWidth cam))
+  putStrLn (toPPM image)
 
