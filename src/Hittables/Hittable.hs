@@ -1,12 +1,23 @@
-module Hittables.Hittable where
+module Hittables.Hittable(Hittable(hit), HitRecord(..), createHitRecord) where
 
-import Vec3 (Vec3)
-import Ray (Ray)
+import Vec3 (Vec3, (.^), (*^))
+import Ray (Ray, direction)
 
 data HitRecord = HitRecord {
   point :: Vec3,
   normal :: Vec3,
-  t :: Double
+  t :: Double,
+  frontFace :: Bool
 }
 
-class Hittable a where hit :: a -> Ray -> Double -> Double -> Maybe HitRecord
+createHitRecord :: Ray -> Vec3 -> Vec3 -> Double -> HitRecord
+createHitRecord ray pt outNorm rayT = let
+    ff = (direction ray) .^ outNorm < 0;
+  in HitRecord {
+    point = pt,
+    normal = if ff then outNorm else outNorm *^ (-1),
+    t = rayT,
+    frontFace = ff
+  }
+
+class Hittable a where hit :: Double -> Double -> Ray -> a -> Maybe HitRecord

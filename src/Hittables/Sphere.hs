@@ -1,7 +1,7 @@
-module Hittables.Sphere where
+module Hittables.Sphere (Sphere(..), hit) where
 
 import Vec3 (Vec3, mag_squared, (-^), (.^), (/^))
-import Hittables.Hittable (Hittable(..), HitRecord(..))
+import Hittables.Hittable (Hittable(..), createHitRecord)
 import Ray (Ray(direction, origin), at)
 
 data Sphere = Sphere {
@@ -18,11 +18,11 @@ nearestRoot h disc a tMin tMax = let
     if (rootNeg <= tMin || tMax <= rootNeg)
       then if (rootPos <= tMin || tMax <= rootPos)
         then Nothing
-        else Just rootNeg
-      else Just rootPos
+        else Just rootPos
+      else Just rootNeg
 
 instance Hittable Sphere where
-  hit (Sphere ctr rad) ray tMin tMax = let
+  hit tMin tMax ray (Sphere ctr rad) = let
       oc = ctr -^ origin ray;
       a = mag_squared (direction ray);
       h = (direction ray .^ oc);
@@ -32,11 +32,7 @@ instance Hittable Sphere where
       if discriminant < 0
         then Nothing
         else
-          case (nearestRoot h discriminant a tMin tMax) of
+          case nearestRoot h discriminant a tMin tMax of
             Nothing -> Nothing
-            Just root -> let pt = at ray root
-              in Just HitRecord {
-                point = pt,
-                t = root,
-                normal = (pt -^ ctr) /^ rad
-              }
+            Just rayT -> let pt = at ray rayT
+              in Just (createHitRecord ray pt ((pt -^ ctr) /^ rad) rayT)
