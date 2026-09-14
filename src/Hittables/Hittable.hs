@@ -1,24 +1,26 @@
-module Hittables.Hittable(Hittable(hit), HitRecord(..), createHitRecord) where
+module Hittables.Hittable(Hittable(..), hit, HitRecord(..), createHitRecord) where
 
-import Point3
-import Vec3 (Vec3, (.^), (*^))
-import Ray (Ray, direction)
+import Ray
+import Hittables.Sphere
+import Hittables.HitRecord
+-- import Data.List (sortOn)
+-- import Data.Maybe (catMaybes)
 
-data HitRecord = HitRecord {
-  point :: Point3,
-  normal :: Vec3,
-  t :: Double,
-  frontFace :: Bool
-}
+data Hittable = SphereObj Sphere
 
-createHitRecord :: Ray -> Point3 -> Vec3 -> Double -> HitRecord
-createHitRecord ray pt outNorm rayT = let
-    ff = (direction ray) .^ outNorm < 0;
-  in HitRecord {
-    point = pt,
-    normal = if ff then outNorm else outNorm *^ (-1),
-    t = rayT,
-    frontFace = ff
-  }
+hit :: Double -> Double -> Ray -> Hittable -> Maybe HitRecord
+hit tMin tMax ray obj =
+  case obj of
+    SphereObj sphere -> hitSphere tMin tMax ray sphere
 
-class Hittable a where hit :: Double -> Double -> Ray -> a -> Maybe HitRecord
+-- type Scene = [Hittable]
+--
+-- hitScene :: Scene -> Ray -> Double -> Double -> Maybe HitRecord
+-- hitScene objects ray tMin tMax = let
+--     hits = sortOn t (catMaybes (map (hit tMin tMax ray) objects));
+--   in
+--     case hits of
+--       (h : _ ) -> Just h
+--       _ -> Nothing
+--
+

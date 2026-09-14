@@ -5,14 +5,13 @@ import Vec3 (Vec3(..), unit, (*^), (+^))
 import Camera
 import Ray
 import Color (Color)
-import Hittables.Hittable (Hittable(hit), HitRecord(..))
+import Hittables.Hittable (Hittable(..), hit, HitRecord(..))
 import Hittables.Sphere (Sphere(..))
-import Hittables.Object (Object(..))
 
 import Data.List (sortOn)
 import Data.Maybe (catMaybes)
 
-see :: [Object] -> Ray -> Color
+see :: [Hittable] -> Ray -> Color
 see objects ray = let
     (Vec3 _ y _) = unit (direction ray);
     a = 0.5 * (y + 1);
