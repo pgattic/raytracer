@@ -1,4 +1,4 @@
-module Main (main) where
+module Main where
 
 import Image (Image(..), toPPM)
 import Vec3 (Vec3(..), unit, (*^), (+^))
