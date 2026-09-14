@@ -7,6 +7,7 @@ import Ray
 import Color (Color)
 import Hittables.Hittable (Hittable(..), hit, HitRecord(..))
 import Hittables.Sphere (Sphere(..))
+import Interval
 
 import Data.List (sortOn)
 import Data.Maybe (catMaybes)
@@ -15,7 +16,7 @@ see :: [Hittable] -> Ray -> Color
 see objects ray = let
     (Vec3 _ y _) = unit (direction ray);
     a = 0.5 * (y + 1);
-    hits = sortOn t (catMaybes (map (hit 0.01 100 ray) objects));
+    hits = sortOn t (catMaybes (map (hit (Interval 0.01 100) ray) objects));
   in
     case hits of
       (h : _ ) -> let (Vec3 nx ny nz) = normal h

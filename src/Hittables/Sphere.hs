@@ -4,14 +4,15 @@ import Vec3
 import Point3
 import Hittables.HitRecord
 import Ray (Ray(direction, origin), at)
+import Interval
 
 data Sphere = Sphere {
   center :: Point3,
   radius :: Double
 }
 
-nearestRoot :: Double -> Double -> Double -> Double -> Double -> Maybe (Double)
-nearestRoot h disc a tMin tMax = let
+nearestRoot :: Double -> Double -> Double -> Interval -> Maybe (Double)
+nearestRoot h disc a (Interval tMin tMax) = let
     sqrtd = sqrt disc
     rootNeg = (h - sqrtd) / a;
     rootPos = (h + sqrtd) / a;
@@ -22,8 +23,8 @@ nearestRoot h disc a tMin tMax = let
         else Just rootPos
       else Just rootNeg
 
-hitSphere :: Double -> Double -> Ray -> Sphere -> Maybe HitRecord
-hitSphere tMin tMax ray (Sphere ctr rad) = let
+hitSphere :: Interval -> Ray -> Sphere -> Maybe HitRecord
+hitSphere interval ray (Sphere ctr rad) = let
     oc = ctr -^ origin ray;
     a = mag_squared (direction ray);
     h = (direction ray .^ oc);
@@ -33,7 +34,7 @@ hitSphere tMin tMax ray (Sphere ctr rad) = let
     if discriminant < 0
       then Nothing
       else
-        case nearestRoot h discriminant a tMin tMax of
+        case nearestRoot h discriminant a interval of
           Nothing -> Nothing
           Just rayT -> let pt = at ray rayT
             in Just (createHitRecord ray pt ((pt -^ ctr) /^ rad) rayT)

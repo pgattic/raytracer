@@ -23,7 +23,7 @@ common warnings
 executable raytracer
     import:           warnings
     main-is:          Main.hs
-    other-modules:    Camera, Color, Image, Point3, Ray, Vec3, Hittables.HitRecord, Hittables.Hittable, Hittables.Sphere
+    other-modules:    Camera, Color, Image, Interval, Point3, Ray, Vec3, Hittables.HitRecord, Hittables.Hittable, Hittables.Sphere
     build-depends:    base ^>=4.20.2.0
     hs-source-dirs:   src
     default-language: Haskell2010

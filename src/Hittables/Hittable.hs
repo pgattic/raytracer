@@ -3,15 +3,16 @@ module Hittables.Hittable(Hittable(..), hit, HitRecord(..), createHitRecord) whe
 import Ray
 import Hittables.Sphere
 import Hittables.HitRecord
+import Interval
 -- import Data.List (sortOn)
 -- import Data.Maybe (catMaybes)
 
 data Hittable = SphereObj Sphere
 
-hit :: Double -> Double -> Ray -> Hittable -> Maybe HitRecord
-hit tMin tMax ray obj =
+hit :: Interval -> Ray -> Hittable -> Maybe HitRecord
+hit interval ray obj =
   case obj of
-    SphereObj sphere -> hitSphere tMin tMax ray sphere
+    SphereObj sphere -> hitSphere interval ray sphere
 
 -- type Scene = [Hittable]
 --
