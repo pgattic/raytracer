@@ -10,7 +10,7 @@ import Data.List (sortOn)
 import Data.Maybe (catMaybes, listToMaybe)
 
 data Scene = Scene {
-  backgroundColor :: Color,
+  background :: Ray -> Color,
   objects :: [Hittable]
 }
 
