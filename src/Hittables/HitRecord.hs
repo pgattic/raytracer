@@ -20,4 +20,3 @@ createHitRecord ray pt outNorm rayT = let
     t = rayT,
     frontFace = ff
   }
-

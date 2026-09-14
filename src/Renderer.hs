@@ -13,15 +13,15 @@ import Data.List (sortOn)
 import Data.Maybe (catMaybes)
 
 see :: Scene -> Ray -> Color
-see (Scene bgColor objects) ray = let
+see scene ray = let
     (Vec3 _ y _) = unit (direction ray);
     a = 0.5 * (y + 1);
-    hits = sortOn t (catMaybes (map (hit (Interval 0.01 100) ray) objects));
+    hit = hitScene scene ray (Interval 0.01 100);
   in
-    case hits of
-      (h : _ ) -> let (Vec3 nx ny nz) = normal h
-        in (Vec3 (nx+1) (ny+1) (nz+1)) *^ 0.5
-      _ -> ((Vec3 1 1 1) *^ (1-a)) +^ (bgColor *^ a)
+    case hit of
+      Just h -> let (Vec3 nx ny nz) = normal h
+        in (Vec3 (nx+1) (ny+1) (nz+1)) *^ 0.5 -- RGB Effect
+      Nothing -> ((Vec3 1 1 1) *^ (1-a)) +^ ((backgroundColor scene) *^ a) -- Background shader
 
 render :: Camera -> Scene -> Image
 render cam scene = let
