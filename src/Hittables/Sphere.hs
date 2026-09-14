@@ -1,11 +1,12 @@
 module Hittables.Sphere (Sphere(..), hit) where
 
-import Vec3 (Vec3, mag_squared, (-^), (.^), (/^))
+import Vec3
+import Point3
 import Hittables.Hittable (Hittable(..), createHitRecord)
 import Ray (Ray(direction, origin), at)
 
 data Sphere = Sphere {
-  center :: Vec3,
+  center :: Point3,
   radius :: Double
 }
 

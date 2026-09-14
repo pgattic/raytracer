@@ -7,20 +7,16 @@ import Ray
 import Color (Color)
 import Hittables.Hittable (Hittable(hit), HitRecord(..))
 import Hittables.Sphere (Sphere(..))
+import Hittables.Object (Object(..))
 
 import Data.List (sortOn)
+import Data.Maybe (catMaybes)
 
-filterJust :: [Maybe a] -> [a]
-filterJust [] = []
-filterJust (x : xs) = case x of
-  Nothing -> filterJust xs
-  Just val -> val : (filterJust xs)
-
-see :: [Sphere] -> Ray -> Color
+see :: [Object] -> Ray -> Color
 see objects ray = let
     (Vec3 _ y _) = unit (direction ray);
     a = 0.5 * (y + 1);
-    hits = sortOn t (filterJust (map (hit 0 100 ray) objects));
+    hits = sortOn t (catMaybes (map (hit 0.01 100 ray) objects));
   in
     case hits of
       (h : _ ) -> let (Vec3 nx ny nz) = normal h
@@ -37,13 +33,14 @@ main = let
       cameraCenter = Vec3 0 0 0
     };
     spheres = [
-      Sphere { center = (Vec3 0 0 (-10)), radius = 5 },
-      Sphere { center = (Vec3 4 4 (-7)), radius = 3 }
+        SphereObj Sphere { center = (Vec3 0 0 (-10)), radius = 5 },
+        SphereObj Sphere { center = (Vec3 4 4 (-7)), radius = 3 },
+        SphereObj Sphere { center = (Vec3 0 (-100.5) (-1)), radius = 100 }
       ]
     grid = [(x, y) | y <- [0 .. imageHeight cam - 1], x <- [0 .. imageWidth cam - 1]]
     rays = map (\(x, y) -> (xyRay cam) x y) grid;
     colors = map (see spheres) rays;
     image = Image { width = imageWidth cam, height = imageHeight cam, pixels = colors };
   in do
-  writeFile "image.ppm" (toPPM image)
-  putStrLn "image.ppm successfully written"
+    writeFile "image.ppm" (toPPM image)
+    putStrLn "image.ppm successfully written"

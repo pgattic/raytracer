@@ -1,16 +1,17 @@
 module Hittables.Hittable(Hittable(hit), HitRecord(..), createHitRecord) where
 
+import Point3
 import Vec3 (Vec3, (.^), (*^))
 import Ray (Ray, direction)
 
 data HitRecord = HitRecord {
-  point :: Vec3,
+  point :: Point3,
   normal :: Vec3,
   t :: Double,
   frontFace :: Bool
 }
 
-createHitRecord :: Ray -> Vec3 -> Vec3 -> Double -> HitRecord
+createHitRecord :: Ray -> Point3 -> Vec3 -> Double -> HitRecord
 createHitRecord ray pt outNorm rayT = let
     ff = (direction ray) .^ outNorm < 0;
   in HitRecord {
