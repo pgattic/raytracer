@@ -9,9 +9,6 @@ import Color
 import Hittables.Hittable
 import Interval
 
-import Data.List (sortOn)
-import Data.Maybe (catMaybes)
-
 rayColor :: Scene -> Ray -> Color
 rayColor scene ray =
   case hitScene scene ray (Interval 0.01 100) of
