@@ -2,7 +2,7 @@ module Image (Image(..), toPPM, exampleImage) where
 
 import Color
 import Vec3
-import Data.List (intercalate)
+import Data.List
 
 data Image = Image {
   width :: Int,
@@ -30,4 +30,3 @@ exampleImage = Image {
     (Vec3 1 0 0)
   ]
 }
-
