@@ -28,22 +28,27 @@ ambientContribution mat = baseColor mat *^ ambient mat
 lightContribution :: Scene -> Ray -> HitRecord -> Light -> Color
 lightContribution scene ray rec light =
   let
-    toLight = position light -^ point rec
-    lightDistance = mag toLight
-    lightDirection = unit toLight
-    diffuseStrength = diffuse mat * max 0 (normal rec .^ lightDirection)
+    (surfaceToLight, shadowRange, lightColor) =
+      case light of
+        PointLight lightPosition col ->
+          let
+            toLight = lightPosition -^ point rec
+          in (unit toLight, Interval 0.001 (mag toLight), col)
+        DirectionalLight lightRayDirection col ->
+          (unit (lightRayDirection *^ (-1)), Interval 0.001 (1 / 0), col)
+    diffuseStrength = diffuse mat * max 0 (normal rec .^ surfaceToLight)
     viewDirection = unit (direction ray *^ (-1))
-    reflectedLight = reflect (lightDirection *^ (-1)) (normal rec)
+    reflectedLight = reflect (surfaceToLight *^ (-1)) (normal rec)
     specularStrength = specular mat * ((max 0 (viewDirection .^ reflectedLight)) ** shininess mat)
-    shadowRay = Ray { origin = point rec, direction = lightDirection }
+    shadowRay = Ray { origin = point rec, direction = surfaceToLight }
     mat = material rec
-    visible = case hitScene scene shadowRay (Interval 0.001 lightDistance) of
+    visible = case hitScene scene shadowRay shadowRange of
       Nothing -> True
       Just _ -> False
   in
     if visible
-      then multiplyColor (baseColor mat) (color light) *^ diffuseStrength
-        +^ color light *^ specularStrength
+      then multiplyColor (baseColor mat) lightColor *^ diffuseStrength
+        +^ lightColor *^ specularStrength
       else Vec3 0 0 0
 
 shade :: RendererConfig -> Int -> Scene -> Ray -> HitRecord -> Color

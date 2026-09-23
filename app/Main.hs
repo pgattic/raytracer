@@ -60,7 +60,8 @@ main = let
       ],
       lights = [
         (PointLight (Vec3 (-3) 15 (-4)) (Vec3 1 1 1)),
-        (PointLight (Vec3 (4) 0 (-2)) (Vec3 1 1 1))
+        (PointLight (Vec3 (4) 0 (-2)) (Vec3 1 1 1)),
+        (DirectionalLight (Vec3 0 (-1) 0) (Vec3 1 1 1))
       ]
     }
   in do
