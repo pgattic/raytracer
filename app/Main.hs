@@ -9,6 +9,8 @@ import Renderer
 import Scene
 import Ray
 import Interval
+import Hittables.Material
+import Light
 
 main :: IO ()
 main = let
@@ -31,9 +33,12 @@ main = let
     scene = Scene {
       background = bgFn,
       objects = [
-        SphereObj Sphere { center = (Vec3 0 0 (-10)), radius = 5 },
-        SphereObj Sphere { center = (Vec3 4 4 (-7)), radius = 3 },
-        SphereObj Sphere { center = (Vec3 0 (-100.5) (-1)), radius = 100 }
+        SphereObj (Sphere (Vec3 0 0 (-10)) 5 (Lambertian (Vec3 1 0 0))),
+        SphereObj (Sphere (Vec3 4 4 (-7)) 3 (Lambertian (Vec3 1 0 0))),
+        SphereObj (Sphere (Vec3 0 (-100.5) (-1)) 100 (Lambertian (Vec3 1 0 0)))
+      ],
+      lights = [
+        (PointLight (Vec3 0 20 (-8)) (Vec3 1 1 1))
       ]
     }
   in do

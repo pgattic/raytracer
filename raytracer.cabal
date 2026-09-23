@@ -23,9 +23,10 @@ common warnings
 library
     import:           warnings
     hs-source-dirs:   src
-    exposed-modules:  Camera, Color, Image, Interval, Point3, Ray, Renderer, Scene, Vec3,
+    exposed-modules:  Camera, Color, Image, Interval, Point3, Light, Ray, Renderer, Scene, Vec3,
                       Hittables.HitRecord,
                       Hittables.Hittable,
+                      Hittables.Material,
                       Hittables.Sphere
     build-depends:    base ^>=4.20.2.0
     default-language: Haskell2010
