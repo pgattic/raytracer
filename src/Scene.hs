@@ -10,12 +10,14 @@ data Scene = Scene {
   objects :: [Hittable]
 }
 
-findClosest :: Maybe HitRecord -> Maybe HitRecord -> Maybe HitRecord
-findClosest Nothing Nothing = Nothing;
-findClosest Nothing (Just hr1) = Just hr1;
-findClosest (Just hr0) Nothing = Just hr0;
-findClosest (Just hr0) (Just hr1) = Just (if (t hr0) < (t hr1) then hr0 else hr1)
+findClosest :: Ray -> (Maybe HitRecord, Interval) -> Hittable -> (Maybe HitRecord, Interval)
+findClosest ray accumVal obj = let
+    accumInt = snd accumVal;
+  in
+    case hit accumInt ray obj of
+      Nothing -> accumVal
+      Just record -> (Just record, Interval (minT accumInt) (t record))
 
 hitScene :: Scene -> Ray -> Interval -> Maybe HitRecord
 hitScene (Scene _ objs) ray interval =
-  foldl findClosest Nothing (map (hit interval ray) objs)
+  fst (foldl (findClosest ray) (Nothing, interval) objs)
