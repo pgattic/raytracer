@@ -8,6 +8,7 @@ import Hittables.Sphere
 import Renderer
 import Scene
 import Ray
+import Interval
 
 main :: IO ()
 main = let
@@ -17,6 +18,9 @@ main = let
         a = 0.5 * (y + 1);
       in ((Vec3 1 1 1) *^ (1-a)) +^ ((Vec3 0.5 0.7 1.0) *^ a);
 
+    rendererConf = RendererConfig {
+      rayBounds = (Interval 0.001 100)
+    };
     cam = Camera {
       aspectRatio = 16 / 9,
       imageHeight = 360,
@@ -33,5 +37,5 @@ main = let
       ]
     }
   in do
-    writeFile "image.ppm" (toPPM (render cam scene))
+    writeFile "image.ppm" (toPPM (render rendererConf cam scene))
     putStrLn "image.ppm successfully written"

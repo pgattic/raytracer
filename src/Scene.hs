@@ -21,6 +21,5 @@ findClosest (Just hr0) (Just hr1) = let
     Just (if t0 < t1 then hr0 else hr1)
 
 hitScene :: Scene -> Ray -> Interval -> Maybe HitRecord
-hitScene (Scene _ objs) ray interval = let
-  in
-    foldl findClosest Nothing (map (hit interval ray) objs)
+hitScene (Scene _ objs) ray interval =
+  foldl findClosest Nothing (map (hit interval ray) objs)
