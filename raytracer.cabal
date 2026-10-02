@@ -27,7 +27,8 @@ library
                       Objects.HitRecord,
                       Objects.Material,
                       Objects.Object,
-                      Objects.Sphere
+                      Objects.Sphere,
+                      Objects.Triangle
     build-depends:    base ^>=4.20.2.0
     default-language: Haskell2010
 

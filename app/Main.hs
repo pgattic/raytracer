@@ -5,6 +5,7 @@ import Vec3
 import Camera
 import Objects.Object
 import Objects.Sphere
+import Objects.Triangle
 import Renderer
 import Scene
 import Interval
@@ -51,6 +52,14 @@ main = let
           specular = 0.1,
           shininess = 16,
           reflectivity = 0.05
+        }),
+        TriangleObj (Triangle (Vec3 (-3) 0 (-4)) (Vec3 0 3 (-4)) (Vec3 3 0 (-4)) Material {
+          baseColor = Vec3 1 0.8 0.1,
+          ambient = 0.1,
+          diffuse = 0.75,
+          specular = 0.3,
+          shininess = 24,
+          reflectivity = 0.1
         })
       ],
       lights = [
