@@ -35,7 +35,9 @@ main = let
           diffuse = 0.7,
           specular = 0.4,
           shininess = 32,
-          reflectivity = 0.15
+          reflectivity = 0.05,
+          transparency = 0.75,
+          refractiveIndex = 1.5
         }),
         SphereObj (Sphere (Vec3 2 2 (-3.5)) 1.5 Material {
           baseColor = Vec3 0 0 1,
@@ -43,7 +45,9 @@ main = let
           diffuse = 0.7,
           specular = 0.7,
           shininess = 64,
-          reflectivity = 0.25
+          reflectivity = 0.25,
+          transparency = 0,
+          refractiveIndex = 1
         }),
         SphereObj (Sphere (Vec3 0 (-100.5) (-1)) 100 Material {
           baseColor = Vec3 0.3 0.6 0.2,
@@ -51,7 +55,9 @@ main = let
           diffuse = 0.8,
           specular = 0.1,
           shininess = 16,
-          reflectivity = 0.05
+          reflectivity = 0.05,
+          transparency = 0,
+          refractiveIndex = 1
         }),
         TriangleObj (Triangle (Vec3 (-3) 0 (-4)) (Vec3 0 3 (-4)) (Vec3 3 0 (-4)) Material {
           baseColor = Vec3 1 0.8 0.1,
@@ -59,7 +65,9 @@ main = let
           diffuse = 0.75,
           specular = 0.3,
           shininess = 24,
-          reflectivity = 0.1
+          reflectivity = 0.1,
+          transparency = 0,
+          refractiveIndex = 1
         })
       ],
       lights = [

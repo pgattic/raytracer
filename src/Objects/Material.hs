@@ -8,5 +8,7 @@ data Material = Material {
   diffuse :: Double,
   specular :: Double,
   shininess :: Double,
-  reflectivity :: Double
+  reflectivity :: Double,
+  transparency :: Double,
+  refractiveIndex :: Double
 }

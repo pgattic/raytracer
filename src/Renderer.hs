@@ -20,6 +20,19 @@ data RendererConfig = RendererConfig {
 reflect :: Vec3 -> Vec3 -> Vec3
 reflect v n = v -^ (n *^ (2 * (v .^ n)))
 
+refract :: Vec3 -> Vec3 -> Double -> Maybe Vec3
+refract uv n refractionRatio =
+  let
+    cosTheta = min ((uv *^ (-1)) .^ n) 1
+    rayOutPerpendicular = (uv +^ (n *^ cosTheta)) *^ refractionRatio
+    perpendicularLengthSquared = mag_squared rayOutPerpendicular
+  in
+    if perpendicularLengthSquared > 1
+      then Nothing
+      else
+        let rayOutParallel = n *^ (negate (sqrt (abs (1 - perpendicularLengthSquared))))
+        in Just (rayOutPerpendicular +^ rayOutParallel)
+
 ambientContribution :: Material -> Color
 ambientContribution mat = baseColor mat *^ ambient mat
 
@@ -55,6 +68,7 @@ shade rendConf depth scene ray rec =
     mat = material rec
     lightColors = map (lightContribution scene ray rec) (lights scene)
     directLight = foldl (+^) (ambientContribution mat) lightColors
+    unitDirection = unit (direction ray)
     reflectedColor =
       if depth <= 0 || reflectivity mat <= 0
         then Vec3 0 0 0
@@ -62,10 +76,31 @@ shade rendConf depth scene ray rec =
           let
             reflectedRay = Ray {
               origin = point rec,
-              direction = reflect (unit (direction ray)) (normal rec)
+              direction = reflect unitDirection (normal rec)
             }
           in rayColorWithDepth rendConf (depth - 1) scene reflectedRay
-  in directLight *^ (1 - reflectivity mat) +^ reflectedColor *^ reflectivity mat
+    refractedColor =
+      if depth <= 0 || transparency mat <= 0
+        then Vec3 0 0 0
+        else
+          let
+            refractionRatio =
+              if frontFace rec
+                then 1 / refractiveIndex mat
+                else refractiveIndex mat
+            refractedDirection = refract unitDirection (normal rec) refractionRatio
+            fallbackDirection = reflect unitDirection (normal rec)
+            refractedRay = Ray {
+              origin = point rec,
+              direction = case refractedDirection of
+                Nothing -> fallbackDirection
+                Just dir -> dir
+            }
+          in rayColorWithDepth rendConf (depth - 1) scene refractedRay
+    localWeight = max 0 (1 - reflectivity mat - transparency mat)
+  in directLight *^ localWeight
+    +^ reflectedColor *^ reflectivity mat
+    +^ multiplyColor (baseColor mat) refractedColor *^ transparency mat
 
 rayColorWithDepth :: RendererConfig -> Int -> Scene -> Ray -> Color
 rayColorWithDepth rendConf depth scene ray =
