@@ -15,7 +15,8 @@ main :: IO ()
 main = let
     rendererConf = RendererConfig {
       rayBounds = (Interval 0.001 100),
-      maxDepth = 3
+      maxDepth = 3,
+      samplesPerPixel = 4
     };
     cam = Camera {
       aspectRatio = 16 / 9,

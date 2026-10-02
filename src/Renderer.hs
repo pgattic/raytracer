@@ -13,7 +13,8 @@ import Light
 
 data RendererConfig = RendererConfig {
   rayBounds :: Interval,
-  maxDepth :: Int
+  maxDepth :: Int,
+  samplesPerPixel :: Int
 }
 
 reflect :: Vec3 -> Vec3 -> Vec3
@@ -77,9 +78,36 @@ rayColorWithDepth rendConf depth scene ray =
 rayColor :: RendererConfig -> Scene -> Ray -> Color
 rayColor rendConf = rayColorWithDepth rendConf (maxDepth rendConf)
 
+sampleOffsets :: Int -> [(Double, Double)]
+sampleOffsets sampleCount =
+  let
+    safeSampleCount = max 1 sampleCount
+    samplesPerAxis :: Int
+    samplesPerAxis = ceiling (sqrt (fromIntegral safeSampleCount :: Double))
+    axisSamples :: [Int]
+    axisSamples = [0 .. samplesPerAxis - 1]
+    centeredOffset :: Int -> Double
+    centeredOffset sampleIndex =
+      (fromIntegral sampleIndex + 0.5) / fromIntegral samplesPerAxis
+  in take safeSampleCount [
+    (centeredOffset x, centeredOffset y) |
+    y <- axisSamples,
+    x <- axisSamples
+  ]
+
+averageColor :: [Color] -> Color
+averageColor colors =
+  foldl (+^) (Vec3 0 0 0) colors /^ fromIntegral (length colors)
+
+pixelColor :: RendererConfig -> Camera -> Scene -> Int -> Int -> Color
+pixelColor rendConf cam scene x y =
+  let
+    offsets = sampleOffsets (samplesPerPixel rendConf)
+    rays = map (\(xOffset, yOffset) -> xyRaySample cam x y xOffset yOffset) offsets
+  in averageColor (map (rayColor rendConf scene) rays)
+
 render :: RendererConfig -> Camera -> Scene -> Image
 render rendConf cam scene = let
     grid = [(x, y) | y <- [0 .. imageHeight cam - 1], x <- [0 .. imageWidth cam - 1]]
-    rays = map (\(x, y) -> (xyRay cam) x y) grid;
-    colors = map (rayColor rendConf scene) rays;
+    colors = map (\(x, y) -> pixelColor rendConf cam scene x y) grid;
   in Image { width = imageWidth cam, height = imageHeight cam, pixels = colors };

@@ -1,4 +1,4 @@
-module Camera(Camera(..), imageWidth, xyRay) where
+module Camera(Camera(..), imageWidth, xyRay, xyRaySample) where
 
 import Point3
 import Vec3
@@ -33,20 +33,23 @@ pxDeltaV c = (viewportV c) /^ (fromIntegral (imageHeight c))
 viewportUpperLeft :: Camera -> Point3
 viewportUpperLeft c = (cameraCenter c) -^ (Vec3 0 0 (focalLength c)) -^ ((viewportV c) /^ 2) -^ ((viewportU c) /^ 2)
 
-pixel00Loc :: Camera -> Point3
-pixel00Loc c = (viewportUpperLeft c) +^ ((((pxDeltaU c) *^ 0.5) +^ ((pxDeltaV c) *^ 0.5)))
-
 px2ray :: Camera -> Point3 -> Ray
 px2ray c px =
   let center = cameraCenter c
   in Ray { origin = center, direction = px -^ center }
 
-xyPixel :: Camera -> Int -> Int -> Point3
-xyPixel c xi yi =
+xyPixelSample :: Camera -> Int -> Int -> Double -> Double -> Point3
+xyPixelSample c xi yi xOffset yOffset =
   let
-    x = fromIntegral xi;
-    y = fromIntegral yi
-  in (pixel00Loc c) +^ ((((pxDeltaU c) *^ x) +^ ((pxDeltaV c) *^ y)))
+    x = fromIntegral xi + xOffset;
+    y = fromIntegral yi + yOffset
+  in (viewportUpperLeft c) +^ (((pxDeltaU c) *^ x) +^ ((pxDeltaV c) *^ y))
+
+xyPixel :: Camera -> Int -> Int -> Point3
+xyPixel c xi yi = xyPixelSample c xi yi 0.5 0.5
+
+xyRaySample :: Camera -> Int -> Int -> Double -> Double -> Ray
+xyRaySample c x y xOffset yOffset = px2ray c (xyPixelSample c x y xOffset yOffset)
 
 xyRay :: Camera -> Int -> Int -> Ray
 xyRay c x y = px2ray c (xyPixel c x y)
