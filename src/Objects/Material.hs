@@ -1,4 +1,4 @@
-module Hittables.Material(Material(..)) where
+module Objects.Material(Material(..)) where
 
 import Color
 

@@ -1,9 +1,9 @@
-module Hittables.HitRecord (HitRecord(..), createHitRecord ) where
+module Objects.HitRecord (HitRecord(..), createHitRecord ) where
 
 import Point3
 import Vec3 (Vec3, (.^), (*^))
 import Ray
-import Hittables.Material
+import Objects.Material
 
 data HitRecord = HitRecord {
   point :: Point3,

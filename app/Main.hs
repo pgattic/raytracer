@@ -3,22 +3,16 @@ module Main where
 import Image
 import Vec3
 import Camera
-import Hittables.Hittable
-import Hittables.Sphere
+import Objects.Object
+import Objects.Sphere
 import Renderer
 import Scene
 import Interval
-import Hittables.Material
+import Objects.Material
 import Light
 
 main :: IO ()
 main = let
-    -- Blue Sky shader
-    -- bgFn ray = let
-    --     (Vec3 _ y _) = unit (direction ray);
-    --     a = 0.5 * (y + 1);
-    --   in ((Vec3 1 1 1) *^ (1-a)) +^ ((Vec3 0.5 0.7 1.0) *^ a);
-
     rendererConf = RendererConfig {
       rayBounds = (Interval 0.001 100),
       maxDepth = 3
@@ -50,7 +44,7 @@ main = let
           reflectivity = 0.25
         }),
         SphereObj (Sphere (Vec3 0 (-100.5) (-1)) 100 Material {
-          baseColor = Vec3 0.3 0.8 0.4,
+          baseColor = Vec3 0.3 0.6 0.2,
           ambient = 0.1,
           diffuse = 0.8,
           specular = 0.1,
@@ -59,8 +53,6 @@ main = let
         })
       ],
       lights = [
-        (PointLight (Vec3 (-3) 15 (-4)) (Vec3 1 1 1)),
-        (PointLight (Vec3 (4) 0 (-2)) (Vec3 1 1 1)),
         (DirectionalLight (Vec3 0 (-1) 0) (Vec3 1 1 1))
       ]
     }

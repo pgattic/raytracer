@@ -1,7 +1,7 @@
-module Color (Color, (+^), (-^), to256, printColor) where
+module Color (Color, (+^), (-^), (*^), to256, multiplyColor, printColor) where
 
 import Data.Word
-import Vec3 (Vec3(..), (+^), (-^))
+import Vec3 (Vec3(..), (+^), (-^), (*^))
 import Interval
 
 type Color = Vec3
@@ -16,3 +16,6 @@ to256 (Vec3 r g b) = let
 
 printColor :: Color -> String
 printColor c = let (r, g, b) = to256 c in unwords [show (r), show (g), show (b)]
+
+multiplyColor :: Color -> Color -> Color
+multiplyColor (Vec3 r0 g0 b0) (Vec3 r1 g1 b1) = Vec3 (r0 * r1) (g0 * g1) (b0 * b1)

@@ -6,8 +6,8 @@ import Image
 import Vec3
 import Ray
 import Color
-import Hittables.Hittable
-import Hittables.Material
+import Objects.Object
+import Objects.Material
 import Interval
 import Light
 
@@ -15,9 +15,6 @@ data RendererConfig = RendererConfig {
   rayBounds :: Interval,
   maxDepth :: Int
 }
-
-multiplyColor :: Color -> Color -> Color
-multiplyColor (Vec3 r0 g0 b0) (Vec3 r1 g1 b1) = Vec3 (r0 * r1) (g0 * g1) (b0 * b1)
 
 reflect :: Vec3 -> Vec3 -> Vec3
 reflect v n = v -^ (n *^ (2 * (v .^ n)))
@@ -35,7 +32,7 @@ lightContribution scene ray rec light =
             toLight = lightPosition -^ point rec
           in (unit toLight, Interval 0.001 (mag toLight), col)
         DirectionalLight lightRayDirection col ->
-          (unit (lightRayDirection *^ (-1)), Interval 0.001 (1 / 0), col)
+          (unit (lightRayDirection *^ (-1)), Interval 0.001 infinity, col)
     diffuseStrength = diffuse mat * max 0 (normal rec .^ surfaceToLight)
     viewDirection = unit (direction ray *^ (-1))
     reflectedLight = reflect (surfaceToLight *^ (-1)) (normal rec)

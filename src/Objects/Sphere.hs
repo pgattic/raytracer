@@ -1,9 +1,9 @@
-module Hittables.Sphere (Sphere(..), hitSphere) where
+module Objects.Sphere (Sphere(..), hitSphere) where
 
 import Vec3
 import Point3
-import Hittables.HitRecord
-import Hittables.Material
+import Objects.HitRecord
+import Objects.Material
 import Ray (Ray(direction, origin), at)
 import Interval
 
