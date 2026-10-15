@@ -1,4 +1,4 @@
-module Scene (Scene(..), hitScene) where
+module Scene (Scene(..), hitScene, accelerateScene) where
 
 import Color
 import Objects.Object
@@ -20,4 +20,7 @@ findClosest ray accumVal@(_, accumInt) obj =
 
 hitScene :: Scene -> Ray -> Interval -> Maybe HitRecord
 hitScene (Scene _ objs _) ray interval =
-  fst (foldl (findClosest ray) (Nothing, interval) objs)
+  fst (foldl' (findClosest ray) (Nothing, interval) objs)
+
+accelerateScene :: Scene -> Scene
+accelerateScene scene = scene { objects = buildBVH (objects scene) }

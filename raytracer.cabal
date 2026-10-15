@@ -23,7 +23,7 @@ common warnings
 library
     import:           warnings
     hs-source-dirs:   src
-    exposed-modules:  Camera, Color, Image, Interval, Point3, Light, Ray, Renderer, Scene, Vec3,
+    exposed-modules:  Bounds, Optics, Sampling, Camera, Color, Image, Interval, Point3, Light, Ray, Renderer, Scene, Vec3,
                       Objects.HitRecord,
                       Objects.Material,
                       Objects.Object,
@@ -36,5 +36,14 @@ executable raytracer
     import:           warnings
     hs-source-dirs:   app
     main-is:          Main.hs
+    other-modules:    Scenes
     build-depends:    base ^>=4.20.2.0, raytracer
+    default-language: Haskell2010
+
+test-suite raytracer-tests
+    import: warnings
+    type: exitcode-stdio-1.0
+    hs-source-dirs: test
+    main-is: Main.hs
+    build-depends: base ^>=4.20.2.0, raytracer
     default-language: Haskell2010

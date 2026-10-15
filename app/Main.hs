@@ -1,154 +1,68 @@
 module Main where
 
-import Image
-import Color
-import Vec3
 import Camera
-import Objects.Object
-import Objects.Sphere
-import Objects.Triangle
-import Renderer
-import Scene
-import Ray
+import Image
 import Interval
-import Objects.Material
-import Light
+import Renderer
+import Scenes
+import Vec3
+import System.Environment (getArgs)
+import System.Exit (die)
+import Text.Read (readMaybe)
 
-matte :: Color -> Material
-matte surfaceColor = Material {
-  baseColor = surfaceColor,
-  ambient = 0.12,
-  diffuse = 0.85,
-  specular = 0.12,
-  shininess = 16,
-  reflectivity = 0.02,
-  transparency = 0,
-  refractiveIndex = 1
-}
+data Options = Options Int Int Int String (Maybe FilePath) Vec3 Vec3
 
-glass :: Color -> Material
-glass surfaceColor = Material {
-  baseColor = surfaceColor,
-  ambient = 0.005,
-  diffuse = 0.05,
-  specular = 1.0,
-  shininess = 96,
-  reflectivity = 0.04,
-  transparency = 0.9,
-  refractiveIndex = 1.35
-}
+defaults :: Options
+defaults = Options 720 9 6 "both" Nothing (Vec3 0 0 0) (Vec3 0 0 (-1))
 
-mirror :: Color -> Material
-mirror surfaceColor = Material {
-  baseColor = surfaceColor,
-  ambient = 0.04,
-  diffuse = 0.35,
-  specular = 0.95,
-  shininess = 128,
-  reflectivity = 0.55,
-  transparency = 0,
-  refractiveIndex = 1
-}
+usage :: String
+usage = "Usage: raytracer [--scene 1|2|both] [--height N] [--samples N] [--depth N] [--output PATH] [--eye X Y Z] [--target X Y Z]"
 
-skyBackground :: Ray -> Color
-skyBackground ray =
-  let
-    Vec3 _ y _ = unit (direction ray)
-    a = 0.5 * (y + 1)
-  in (Vec3 0.08 0.1 0.14 *^ (1 - a)) +^ (Vec3 0.55 0.68 0.9 *^ a)
-
-floorTriangles :: Material -> [Object]
-floorTriangles mat = [
-    TriangleObj (Triangle (Vec3 (-7) (-1.2) (-2)) (Vec3 7 (-1.2) (-2)) (Vec3 7 (-1.2) (-11)) mat),
-    TriangleObj (Triangle (Vec3 (-7) (-1.2) (-2)) (Vec3 7 (-1.2) (-11)) (Vec3 (-7) (-1.2) (-11)) mat)
-  ]
-
-colorTarget :: Double -> Double -> Double -> [Object]
-colorTarget cx cy z =
-  let
-    colors = [
-        Vec3 1 0.75 0.08,
-        Vec3 0.15 0.45 1,
-        Vec3 0.12 0.8 0.35,
-        Vec3 0.95 0.18 0.55,
-        Vec3 0.05 0.85 0.9,
-        Vec3 1 0.35 0.08
-      ]
-    columns = 7
-    rows = 5
-    tileWidth = 3.6 / fromIntegral columns
-    tileHeight = 2.8 / fromIntegral rows
-    left = cx - 1.8
-    bottom = cy - 1.4
-    tile x y =
-      let
-        x0 = left + fromIntegral x * tileWidth
-        x1 = x0 + tileWidth
-        y0 = bottom + fromIntegral y * tileHeight
-        y1 = y0 + tileHeight
-        mat = matte (colors !! ((x + y * columns) `mod` length colors))
-        bottomLeft = Vec3 x0 y0 z
-        bottomRight = Vec3 x1 y0 z
-        topRight = Vec3 x1 y1 z
-        topLeft = Vec3 x0 y1 z
-      in [
-        TriangleObj (Triangle bottomLeft bottomRight topRight mat),
-        TriangleObj (Triangle bottomLeft topRight topLeft mat)
-      ]
-  in concat [tile x y | y <- [0 .. rows - 1], x <- [0 .. columns - 1]]
-
-sceneOne :: Scene
-sceneOne = Scene {
-  background = skyBackground,
-  objects =
-    floorTriangles (matte (Vec3 0.42 0.48 0.52)) ++
-    colorTarget (-1.15) 0.15 (-7.1) ++ [
-      SphereObj (Sphere (Vec3 (-1.15) 0 (-5)) 1.05 (glass (Vec3 1 1 1))),
-      SphereObj (Sphere (Vec3 1.45 (-0.05) (-4.8)) 1.0 (mirror (Vec3 0.15 0.28 0.95))),
-      TriangleObj (Triangle (Vec3 0.25 (-1.2) (-6.3)) (Vec3 0.85 0.65 (-6.5)) (Vec3 1.45 (-1.2) (-6.3)) (matte (Vec3 0.22 0.72 1)))
-    ],
-  lights = [
-    DirectionalLight (Vec3 (-0.7) (-1) (-0.45)) (Vec3 1 0.96 0.9)
-  ]
-}
-
-sceneTwo :: Scene
-sceneTwo = Scene {
-  background = skyBackground,
-  objects =
-    floorTriangles (matte (Vec3 0.22 0.24 0.28)) ++
-    colorTarget 0 0.2 (-7.0) ++ [
-      SphereObj (Sphere (Vec3 0 0 (-4.25)) 1.1 (glass (Vec3 1 1 1))),
-      SphereObj (Sphere (Vec3 2.25 (-0.35) (-5.2)) 0.75 (mirror (Vec3 0.95 0.95 1))),
-      TriangleObj (Triangle (Vec3 (-2.25) (-1.2) (-3.15)) (Vec3 (-1.45) 0.05 (-4.05)) (Vec3 (-0.7) (-1.2) (-3.15)) (matte (Vec3 0.95 0.85 0.16)))
-    ],
-  lights = [
-    DirectionalLight (Vec3 0.45 (-1) (-0.25)) (Vec3 1 0.98 0.94)
-  ]
-}
-
-rendererConf :: RendererConfig
-rendererConf = RendererConfig {
-  rayBounds = Interval 0.001 100,
-  maxDepth = 6,
-  samplesPerPixel = 9
-}
-
-camera :: Camera
-camera = Camera {
-  aspectRatio = 16 / 9,
-  imageHeight = 720,
-  viewportHeight = 2,
-  focalLength = 1,
-  cameraCenter = Vec3 0 0 0
-}
-
-writeRender :: FilePath -> Scene -> IO ()
-writeRender path scene = do
-  writeFile path (toPPM (render rendererConf camera scene))
-  putStrLn (path ++ " successfully written")
+parse :: Options -> [String] -> Either String Options
+parse opts [] = Right opts
+parse (Options h s d which output eye target) (flag:value:rest)
+  | flag == "--scene" && value `elem` ["1","2","both"] = next h s d value output eye target
+  | flag == "--output" = next h s d which (Just value) eye target
+  | flag `elem` ["--height","--samples","--depth"] =
+      case readMaybe value of
+        Just n | n > 0 || (flag == "--depth" && n == 0) ->
+          next (if flag == "--height" then n else h)
+               (if flag == "--samples" then n else s)
+               (if flag == "--depth" then n else d) which output eye target
+        _ -> Left ("Invalid value for " ++ flag)
+  | flag `elem` ["--eye","--target"] =
+      case rest of
+        y:z:remaining -> case (readMaybe value, readMaybe y, readMaybe z) of
+          (Just x', Just y', Just z')
+            | all (\v -> not (isNaN v || isInfinite v)) [x',y',z'] ->
+                let p = Vec3 x' y' z'
+                in parse (Options h s d which output
+                    (if flag == "--eye" then p else eye)
+                    (if flag == "--target" then p else target)) remaining
+          _ -> Left "Camera coordinates must be finite numbers"
+        _ -> Left usage
+  | otherwise = Left usage
+  where next h' s' d' w' o' e' t' = parse (Options h' s' d' w' o' e' t') rest
+parse _ _ = Left usage
 
 main :: IO ()
 main = do
-  writeRender "scene1.ppm" sceneOne
-  writeRender "scene2.ppm" sceneTwo
+  args <- getArgs
+  if args == ["--help"] then putStrLn usage else
+    case parse defaults args of
+      Left message -> die message
+      Right (Options h s d which output eye target)
+        | mag_squared (eye -^ target) == 0 -> die "Eye and target must differ"
+        | mag_squared ((eye -^ target) `cross` Vec3 0 1 0) < 1e-12 ->
+            die "Camera direction must not be parallel to its up vector"
+        | which == "both" && output /= Nothing -> die "--output requires --scene 1 or --scene 2"
+        | otherwise -> do
+            let config = RendererConfig (Interval 0.001 100) d s
+                camera = Camera (16/9) h 2 1 eye target (Vec3 0 1 0)
+                jobs = case which of
+                  "1" -> [(maybe "scene1.ppm" id output, sceneOne)]
+                  "2" -> [(maybe "scene2.ppm" id output, sceneTwo)]
+                  _ -> [("scene1.ppm",sceneOne),("scene2.ppm",sceneTwo)]
+            mapM_ (\(path, scene) -> do
+              writeFile path (toPPM (render config camera scene))
+              putStrLn (path ++ " successfully written")) jobs

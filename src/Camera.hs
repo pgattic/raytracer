@@ -9,7 +9,9 @@ data Camera = Camera {
   imageHeight :: Int,
   viewportHeight :: Double,
   focalLength :: Double,
-  cameraCenter :: Point3
+  cameraCenter :: Point3,
+  lookAt :: Point3,
+  cameraUp :: Vec3
 }
 
 imageWidth :: Camera -> Int
@@ -19,10 +21,13 @@ viewportWidth :: Camera -> Double
 viewportWidth c = (aspectRatio c) * viewportHeight c
 
 viewportU :: Camera -> Vec3
-viewportU c = Vec3 (viewportWidth c) 0 0
+viewportU c = unit (cameraUp c `cross` backward c) *^ viewportWidth c
 
 viewportV :: Camera -> Vec3
-viewportV c = Vec3 0 (-(viewportHeight c)) 0
+viewportV c = unit (backward c `cross` unit (viewportU c)) *^ negate (viewportHeight c)
+
+backward :: Camera -> Vec3
+backward c = unit (cameraCenter c -^ lookAt c)
 
 pxDeltaU :: Camera -> Vec3
 pxDeltaU c = (viewportU c) /^ (fromIntegral (imageWidth c))
@@ -31,7 +36,7 @@ pxDeltaV :: Camera -> Vec3
 pxDeltaV c = (viewportV c) /^ (fromIntegral (imageHeight c))
 
 viewportUpperLeft :: Camera -> Point3
-viewportUpperLeft c = (cameraCenter c) -^ (Vec3 0 0 (focalLength c)) -^ ((viewportV c) /^ 2) -^ ((viewportU c) /^ 2)
+viewportUpperLeft c = cameraCenter c -^ (backward c *^ focalLength c) -^ (viewportV c /^ 2) -^ (viewportU c /^ 2)
 
 px2ray :: Camera -> Point3 -> Ray
 px2ray c px =
