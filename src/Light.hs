@@ -10,4 +10,9 @@ data Light = PointLight {
 } | DirectionalLight {
   lightDirection :: Vec3,
   color :: Color
+} | AreaLight {
+  corner :: Point3,
+  edgeU :: Vec3,
+  edgeV :: Vec3,
+  color :: Color
 }

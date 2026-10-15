@@ -16,7 +16,9 @@ import Sampling
 data RendererConfig = RendererConfig {
   rayBounds :: Interval,
   maxDepth :: Int,
-  samplesPerPixel :: Int
+  samplesPerPixel :: Int,
+  shadowSamples :: Int,
+  renderSeed :: Seed
 }
 
 ambientContribution :: Material -> Color
@@ -34,8 +36,8 @@ shadowTransmission scene ray bounds =
       in if amount == 0 then Vec3 0 0 0
          else multiplyColor (baseColor mat *^ amount) (shadowTransmission scene ray rest)
 
-lightContribution :: Scene -> Ray -> HitRecord -> Light -> Color
-lightContribution scene ray rec light =
+pointContribution :: Scene -> Ray -> HitRecord -> Light -> Color
+pointContribution scene ray rec light =
   let
     (surfaceToLight, shadowRange, lightColor) =
       case light of
@@ -45,6 +47,8 @@ lightContribution scene ray rec light =
           in (unit toLight, Interval rayEpsilon (max 0 (mag toLight - rayEpsilon)), col)
         DirectionalLight lightRayDirection col ->
           (unit (lightRayDirection *^ (-1)), Interval rayEpsilon infinity, col)
+        AreaLight p _ _ col ->
+          (unit (p -^ point rec), Interval rayEpsilon (mag (p -^ point rec)), col)
     diffuseStrength = diffuse mat * max 0 (normal rec .^ surfaceToLight)
     viewDirection = unit (direction ray *^ (-1))
     reflectedLight = reflect (surfaceToLight *^ (-1)) (normal rec)
@@ -58,11 +62,19 @@ lightContribution scene ray rec light =
         +^ lightColor *^ specularStrength)
       else Vec3 0 0 0
 
-shade :: RendererConfig -> Int -> Scene -> Ray -> HitRecord -> Color
-shade rendConf depth scene ray rec =
+lightContribution :: RendererConfig -> Seed -> Scene -> Ray -> HitRecord -> Light -> Color
+lightContribution config seed scene ray rec light =
+  case light of
+    AreaLight p u v col ->
+      averageColor [pointContribution scene ray rec (PointLight (p +^ u *^ x +^ v *^ y) col)
+                   | (x,y) <- sampleOffsets seed (shadowSamples config)]
+    _ -> pointContribution scene ray rec light
+
+shade :: RendererConfig -> Seed -> Int -> Scene -> Ray -> HitRecord -> Color
+shade rendConf seed depth scene ray rec =
   let
     mat = material rec
-    lightColors = map (lightContribution scene ray rec) (lights scene)
+    lightColors = zipWith (\i light -> lightContribution rendConf (deriveSeed seed i) scene ray rec light) [10..] (lights scene)
     directLight = foldl' (+^) (ambientContribution mat) lightColors
     unitDirection = unit (direction ray)
     reflectedColor =
@@ -70,8 +82,8 @@ shade rendConf depth scene ray rec =
         then Vec3 0 0 0
         else
           let
-            reflectedRay = spawnRay (point rec) (normal rec) (reflect unitDirection (normal rec))
-          in rayColorWithDepth rendConf (depth - 1) scene reflectedRay
+            reflectedRay = spawnRay (point rec) (normal rec) (jitterDirection (deriveSeed seed 1) (reflectionRoughness mat) (reflect unitDirection (normal rec)) (normal rec))
+          in rayColorWithDepth rendConf (deriveSeed seed 2) (depth - 1) scene reflectedRay
     refractedColor =
       if depth <= 0 || transparency mat <= 0
         then Vec3 0 0 0
@@ -84,28 +96,28 @@ shade rendConf depth scene ray rec =
             refractedDirection = refract unitDirection (normal rec) refractionRatio
             fallbackDirection = reflect unitDirection (normal rec)
             outgoing = case refractedDirection of
-              Nothing -> fallbackDirection
-              Just dir -> dir
+              Nothing -> jitterDirection (deriveSeed seed 3) (reflectionRoughness mat) fallbackDirection (normal rec)
+              Just dir -> jitterDirection (deriveSeed seed 3) (transmissionRoughness mat) dir (normal rec *^ (-1))
             refractedRay = spawnRay (point rec) (normal rec) outgoing
-          in rayColorWithDepth rendConf (depth - 1) scene refractedRay
+          in rayColorWithDepth rendConf (deriveSeed seed 4) (depth - 1) scene refractedRay
     localWeight = max 0 (1 - reflectivity mat - transparency mat)
   in directLight *^ localWeight
     +^ reflectedColor *^ reflectivity mat
     +^ multiplyColor (baseColor mat) refractedColor *^ transparency mat
 
-rayColorWithDepth :: RendererConfig -> Int -> Scene -> Ray -> Color
-rayColorWithDepth rendConf depth scene ray =
+rayColorWithDepth :: RendererConfig -> Seed -> Int -> Scene -> Ray -> Color
+rayColorWithDepth rendConf seed depth scene ray =
   case hitScene scene ray rI of
-    Just h -> shade rendConf depth scene ray h
+    Just h -> shade rendConf seed depth scene ray h
     Nothing -> background scene ray
   where
     rI = Interval rayEpsilon infinity
 
-rayColor :: RendererConfig -> Scene -> Ray -> Color
-rayColor rendConf scene ray =
+rayColor :: RendererConfig -> Seed -> Scene -> Ray -> Color
+rayColor rendConf seed scene ray =
   case hitScene scene ray (rayBounds rendConf) of
     Nothing -> background scene ray
-    Just rec -> shade rendConf (maxDepth rendConf) scene ray rec
+    Just rec -> shade rendConf seed (maxDepth rendConf) scene ray rec
 
 averageColor :: [Color] -> Color
 averageColor colors =
@@ -114,9 +126,10 @@ averageColor colors =
 pixelColor :: RendererConfig -> Camera -> Scene -> Int -> Int -> Color
 pixelColor rendConf cam scene x y =
   let
-    offsets = sampleOffsets (samplesPerPixel rendConf)
+    seed = deriveSeed (deriveSeed (renderSeed rendConf) (fromIntegral x)) (fromIntegral y)
+    offsets = sampleOffsets seed (samplesPerPixel rendConf)
     rays = map (\(xOffset, yOffset) -> xyRaySample cam x y xOffset yOffset) offsets
-  in averageColor (map (rayColor rendConf scene) rays)
+  in averageColor (zipWith (\i ray -> rayColor rendConf (deriveSeed seed (i+100)) scene ray) [0..] rays)
 
 render :: RendererConfig -> Camera -> Scene -> Image
 render rendConf cam originalScene = let

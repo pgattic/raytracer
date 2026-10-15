@@ -10,5 +10,7 @@ data Material = Material {
   shininess :: Double,
   reflectivity :: Double,
   transparency :: Double,
-  refractiveIndex :: Double
+  refractiveIndex :: Double,
+  reflectionRoughness :: Double,
+  transmissionRoughness :: Double
 }

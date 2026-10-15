@@ -19,7 +19,9 @@ matte surfaceColor = Material {
   shininess = 16,
   reflectivity = 0.02,
   transparency = 0,
-  refractiveIndex = 1
+  refractiveIndex = 1,
+  reflectionRoughness = 0,
+  transmissionRoughness = 0
 }
 
 glass :: Color -> Material
@@ -31,7 +33,9 @@ glass surfaceColor = Material {
   shininess = 96,
   reflectivity = 0.04,
   transparency = 0.9,
-  refractiveIndex = 1.35
+  refractiveIndex = 1.35,
+  reflectionRoughness = 0.08,
+  transmissionRoughness = 0.12
 }
 
 mirror :: Color -> Material
@@ -43,7 +47,9 @@ mirror surfaceColor = Material {
   shininess = 128,
   reflectivity = 0.55,
   transparency = 0,
-  refractiveIndex = 1
+  refractiveIndex = 1,
+  reflectionRoughness = 0.18,
+  transmissionRoughness = 0
 }
 
 skyBackground :: Ray -> Color
@@ -99,12 +105,12 @@ sceneOne = Scene {
   objects =
     floorTriangles (matte (Vec3 0.42 0.48 0.52)) ++
     colorTarget (-1.15) 0.15 (-7.1) ++ [
-      SphereObj (Sphere (Vec3 (-1.15) 0 (-5)) 1.05 (glass (Vec3 1 1 1))),
+      SphereObj (Sphere (Vec3 (-1.15) (-0.15) (-5)) 1.05 (glass (Vec3 1 1 1))),
       SphereObj (Sphere (Vec3 1.45 (-0.05) (-4.8)) 1.0 (mirror (Vec3 0.15 0.28 0.95))),
       TriangleObj (Triangle (Vec3 0.25 (-1.2) (-6.3)) (Vec3 0.85 0.65 (-6.5)) (Vec3 1.45 (-1.2) (-6.3)) (matte (Vec3 0.22 0.72 1)))
     ],
   lights = [
-    DirectionalLight (Vec3 (-0.7) (-1) (-0.45)) (Vec3 1 0.96 0.9)
+    AreaLight (Vec3 (-3) 4 (-2)) (Vec3 3 0 0) (Vec3 0 0 (-3)) (Vec3 1 0.96 0.9)
   ]
 }
 
@@ -114,11 +120,11 @@ sceneTwo = Scene {
   objects =
     floorTriangles (matte (Vec3 0.22 0.24 0.28)) ++
     colorTarget 0 0.2 (-7.0) ++ [
-      SphereObj (Sphere (Vec3 0 0 (-4.25)) 1.1 (glass (Vec3 1 1 1))),
-      SphereObj (Sphere (Vec3 2.25 (-0.35) (-5.2)) 0.75 (mirror (Vec3 0.95 0.95 1))),
+      SphereObj (Sphere (Vec3 0 (-0.1) (-4.25)) 1.1 ((glass (Vec3 1 1 1)) { transmissionRoughness = 0.24 })),
+      SphereObj (Sphere (Vec3 2.25 (-0.45) (-5.2)) 0.75 ((mirror (Vec3 0.95 0.95 1)) { reflectionRoughness = 0.28 })),
       TriangleObj (Triangle (Vec3 (-2.25) (-1.2) (-3.15)) (Vec3 (-1.45) 0.05 (-4.05)) (Vec3 (-0.7) (-1.2) (-3.15)) (matte (Vec3 0.95 0.85 0.16)))
     ],
   lights = [
-    DirectionalLight (Vec3 0.45 (-1) (-0.25)) (Vec3 1 0.98 0.94)
+    AreaLight (Vec3 (-1) 3.5 (-1.5)) (Vec3 3 0 0) (Vec3 0 0 (-2.5)) (Vec3 1 0.98 0.94)
   ]
 }
