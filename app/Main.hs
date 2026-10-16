@@ -11,10 +11,10 @@ import System.Environment (getArgs)
 import System.Exit (die)
 import Text.Read (readMaybe)
 
-data Options = Options Int Int Int String (Maybe FilePath) Vec3 Vec3 Int Seed
+data Options = Options Int Int Int String (Maybe FilePath) (Maybe Vec3) (Maybe Vec3) Int Seed
 
 defaults :: Options
-defaults = Options 360 16 4 "both" Nothing (Vec3 0 0 0) (Vec3 0 0 (-1)) 4 42
+defaults = Options 360 16 4 "both" Nothing Nothing Nothing 4 42
 
 usage :: String
 usage = "Usage: raytracer [--scene 1|2|both] [--height N] [--samples N] [--depth N] [--shadow-samples N] [--seed N] [--output PATH] [--eye X Y Z] [--target X Y Z]"
@@ -46,8 +46,8 @@ parse (Options h s d which output eye target shadows seed) (flag:value:rest)
             | all (\v -> not (isNaN v || isInfinite v)) [x',y',z'] ->
                 let p = Vec3 x' y' z'
                 in parse (Options h s d which output
-                    (if flag == "--eye" then p else eye)
-                    (if flag == "--target" then p else target) shadows seed) remaining
+                    (if flag == "--eye" then Just p else eye)
+                    (if flag == "--target" then Just p else target) shadows seed) remaining
           _ -> Left "Camera coordinates must be finite numbers"
         _ -> Left usage
   | otherwise = Left usage
@@ -61,17 +61,22 @@ main = do
     case parse defaults args of
       Left message -> die message
       Right (Options h s d which output eye target shadows seed)
-        | mag_squared (eye -^ target) == 0 -> die "Eye and target must differ"
-        | mag_squared ((eye -^ target) `cross` Vec3 0 1 0) < 1e-12 ->
-            die "Camera direction must not be parallel to its up vector"
         | which == "both" && output /= Nothing -> die "--output requires --scene 1 or --scene 2"
         | otherwise -> do
             let config = RendererConfig (Interval 0.001 100) d s shadows seed
-                camera = Camera (16/9) h 1.25 1 eye target (Vec3 0 1 0)
                 jobs = case which of
-                  "1" -> [(maybe "scene1.ppm" id output, sceneOne)]
-                  "2" -> [(maybe "scene2.ppm" id output, sceneTwo)]
-                  _ -> [("scene1.ppm",sceneOne),("scene2.ppm",sceneTwo)]
-            mapM_ (\(path, scene) -> do
-              writeFile path (toPPM (render config camera scene))
-              putStrLn (path ++ " successfully written")) jobs
+                  "1" -> [(maybe "scene1.ppm" id output, sceneOne, cameraOne h)]
+                  "2" -> [(maybe "scene2.ppm" id output, sceneTwo, cameraTwo h)]
+                  _ -> [("scene1.ppm",sceneOne,cameraOne h),("scene2.ppm",sceneTwo,cameraTwo h)]
+                prepareCamera preset = preset {
+                  cameraCenter = maybe (cameraCenter preset) id eye,
+                  lookAt = maybe (lookAt preset) id target
+                }
+                validCamera camera =
+                  let view = cameraCenter camera -^ lookAt camera
+                  in mag_squared view > 0 && mag_squared (cross view (cameraUp camera)) > 1e-12
+            if not (all (\(_,_,preset) -> validCamera (prepareCamera preset)) jobs)
+              then die "Camera eye and target must differ and viewing direction must not be parallel to up"
+              else mapM_ (\(path, scene, preset) -> do
+                writeFile path (toPPM (render config (prepareCamera preset) scene))
+                putStrLn (path ++ " successfully written")) jobs

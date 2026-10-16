@@ -17,7 +17,7 @@ bounces. Higher settings can be expensive because recursive hits also sample lig
 For the higher-quality demonstration renders:
 
 ```sh
-nix develop -c cabal run raytracer -- --height 360 --samples 64 --shadow-samples 8 --depth 6 --seed 42
+nix develop -c cabal run raytracer -- --height 360 --samples 32 --shadow-samples 4 --depth 5 --seed 42
 ```
 
 Use --height 720 for 1280x720 output.
@@ -30,7 +30,8 @@ nix develop -c cabal run raytracer -- --scene 1 --height 180 --samples 8 --shado
 
 Use --scene 1, 2, or both; --height and --samples must be positive;
 --depth can be zero. --output requires a single scene.
---eye X Y Z and --target X Y Z control the camera position and look-at point.
+Each scene has its own composed camera. --eye X Y Z and --target X Y Z override
+the camera position and look-at point independently.
 The up vector is positive Y; viewing directly along that vector is rejected.
 Run with --help for the option summary.
 
@@ -43,10 +44,21 @@ in glossy reflections and rough transmission as well as antialiasing.
 ## Demonstration Scenes
 
 Both scenes use BVH traversal, stochastic pixel samples, rectangular area lights,
-glossy spheres, and rough refractive spheres. Scene 1 uses mild roughness so the
-colored mosaic is still recognizable through the glass. Scene 2 uses stronger
-transmission and reflection roughness to demonstrate a frosted appearance.
-The floor receives soft shadows from the area light in each scene.
+and floors made from triangles.
+
+- Scene 1, Sphere Garden: a low camera views a seeded field of small colored
+  spheres surrounding large clear-glass, chrome, and warm matte spheres.
+  Smaller frosted-glass and glossy-metal accents demonstrate rough transmission
+  and reflection. The arrangement is inspired by the supplied sphere-demo JPG.
+- Scene 2, Glass Gallery: clear and frosted glass sit side by side in front of
+  colored sphere stacks. Polished and brushed metal sit behind them, making
+  sharp versus blurred reflection easy to compare.
+
+The spheres sit on the floor or in touching stacks, with clearance around the
+large objects to avoid intersections. Most small spheres and the floors are
+matte, keeping the reflected colors readable and avoiding unnecessary recursion.
+Both scenes use a large area light for soft shadows and a dim directional fill.
+The renderer does not yet implement the reference image's depth of field.
 
 Material reflectionRoughness and transmissionRoughness range from 0 (sharp)
 to 1 (a hemisphere-wide cone). Rays are jittered around the ideal reflection

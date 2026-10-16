@@ -1,5 +1,6 @@
-module Scenes (sceneOne, sceneTwo) where
+module Scenes (sceneOne, sceneTwo, cameraOne, cameraTwo) where
 
+import Camera
 import Color
 import Vec3
 import Objects.Object
@@ -9,122 +10,124 @@ import Scene
 import Ray
 import Objects.Material
 import Light
+import Sampling (random01)
 
 matte :: Color -> Material
-matte surfaceColor = Material {
-  baseColor = surfaceColor,
-  ambient = 0.12,
-  diffuse = 0.85,
-  specular = 0.12,
-  shininess = 16,
-  reflectivity = 0.02,
-  transparency = 0,
-  refractiveIndex = 1,
-  reflectionRoughness = 0,
-  transmissionRoughness = 0
-}
+matte surfaceColor = Material surfaceColor 0.16 0.75 0.08 24 0 0 1 0 0
 
-glass :: Color -> Material
-glass surfaceColor = Material {
-  baseColor = surfaceColor,
-  ambient = 0.005,
-  diffuse = 0.05,
-  specular = 1.0,
-  shininess = 96,
-  reflectivity = 0.04,
-  transparency = 0.9,
-  refractiveIndex = 1.35,
-  reflectionRoughness = 0.08,
-  transmissionRoughness = 0.12
-}
+glass :: Double -> Material
+glass roughness = Material (Vec3 1 1 1) 0 0.02 1 128 0.07 0.92 1.5 0 roughness
 
-mirror :: Color -> Material
-mirror surfaceColor = Material {
-  baseColor = surfaceColor,
-  ambient = 0.04,
-  diffuse = 0.35,
-  specular = 0.95,
-  shininess = 128,
-  reflectivity = 0.55,
-  transparency = 0,
-  refractiveIndex = 1,
-  reflectionRoughness = 0.18,
-  transmissionRoughness = 0
-}
+metal :: Color -> Double -> Material
+metal surfaceColor roughness = Material surfaceColor 0.04 0.18 0.8 100 0.88 0 1 roughness 0
 
-skyBackground :: Ray -> Color
-skyBackground ray =
-  let
-    Vec3 _ y _ = unit (direction ray)
-    a = 0.5 * (y + 1)
-  in (Vec3 0.08 0.1 0.14 *^ (1 - a)) +^ (Vec3 0.55 0.68 0.9 *^ a)
+ball :: Double -> Double -> Double -> Material -> Object
+ball x z r mat = SphereObj (Sphere (Vec3 x r z) r mat)
 
-floorTriangles :: Material -> [Object]
-floorTriangles mat = [
-    TriangleObj (Triangle (Vec3 (-7) (-1.2) (-2)) (Vec3 7 (-1.2) (-2)) (Vec3 7 (-1.2) (-11)) mat),
-    TriangleObj (Triangle (Vec3 (-7) (-1.2) (-2)) (Vec3 7 (-1.2) (-11)) (Vec3 (-7) (-1.2) (-11)) mat)
+floorTriangles :: Color -> [Object]
+floorTriangles surfaceColor =
+  let a = Vec3 (-100) 0 (-100)
+      b = Vec3 100 0 (-100)
+      c = Vec3 100 0 100
+      d = Vec3 (-100) 0 100
+      mat = matte surfaceColor
+  in [TriangleObj (Triangle a c b mat), TriangleObj (Triangle a d c mat)]
+
+palette :: [Color]
+palette = [
+    Vec3 0.72 0.08 0.12, Vec3 0.08 0.42 0.67, Vec3 0.12 0.62 0.38,
+    Vec3 0.65 0.15 0.64, Vec3 0.9 0.48 0.12, Vec3 0.55 0.67 0.17,
+    Vec3 0.35 0.22 0.7, Vec3 0.12 0.7 0.72, Vec3 0.82 0.4 0.5,
+    Vec3 0.7 0.74 0.85, Vec3 0.22 0.3 0.45, Vec3 0.42 0.2 0.12
   ]
 
-colorTarget :: Double -> Double -> Double -> [Object]
-colorTarget cx cy z =
-  let
-    colors = [
-        Vec3 1 0.75 0.08,
-        Vec3 0.15 0.45 1,
-        Vec3 0.12 0.8 0.35,
-        Vec3 0.95 0.18 0.55,
-        Vec3 0.05 0.85 0.9,
-        Vec3 1 0.35 0.08
-      ]
-    columns = 7
-    rows = 5
-    tileWidth = 3.6 / fromIntegral columns
-    tileHeight = 2.8 / fromIntegral rows
-    left = cx - 1.8
-    bottom = cy - 1.4
-    tile x y =
-      let
-        x0 = left + fromIntegral x * tileWidth
-        x1 = x0 + tileWidth
-        y0 = bottom + fromIntegral y * tileHeight
-        y1 = y0 + tileHeight
-        mat = matte (colors !! ((x + y * columns) `mod` length colors))
-        bottomLeft = Vec3 x0 y0 z
-        bottomRight = Vec3 x1 y0 z
-        topRight = Vec3 x1 y1 z
-        topLeft = Vec3 x0 y1 z
-      in [
-        TriangleObj (Triangle bottomLeft bottomRight topRight mat),
-        TriangleObj (Triangle bottomLeft topRight topLeft mat)
-      ]
-  in concat [tile x y | y <- [0 .. rows - 1], x <- [0 .. columns - 1]]
+paletteAt :: Int -> Color
+paletteAt index = case drop (mod index (length palette)) palette of
+  col:_ -> col
+  [] -> Vec3 1 1 1
+
+sky :: Ray -> Color
+sky ray =
+  let Vec3 _ y _ = unit (direction ray)
+      blend = max 0 (min 1 (0.5 * (y+1)))
+  in Vec3 0.7 0.79 0.9 *^ (1-blend) +^ Vec3 0.94 0.97 1 *^ blend
+
+-- Horizontal clearance also prevents the small spheres intersecting the heroes.
+clearOf :: [Object] -> Double -> Double -> Double -> Bool
+clearOf heroes x z r = all separated heroes
+  where
+    separated (SphereObj (Sphere (Vec3 hx _ hz) hr _)) =
+      let dx = x-hx; dz = z-hz; gap = hr+r+0.12
+      in dx*dx + dz*dz > gap*gap
+    separated _ = True
+
+gardenHeroes :: [Object]
+gardenHeroes = [
+    ball 1.4 0.6 1.25 (glass 0),
+    ball (-1.8) 0 1.25 (metal (Vec3 0.95 0.97 1) 0),
+    ball (-6.5) (-3.5) 1.25 (matte (Vec3 0.42 0.24 0.12)),
+    ball (-2.8) 3.2 0.48 (glass 0.1),
+    ball 3.7 1.8 0.5 (metal (Vec3 0.78 0.86 0.98) 0.1)
+  ]
+
+gardenSpheres :: [Object]
+gardenSpheres = [
+    ball x z r (matte (paletteAt (floor (random01 seed 3 * 12000)))) |
+    row <- [-9..7 :: Int], column <- [-8..8 :: Int],
+    let seed = fromIntegral ((row+10)*100 + column+10),
+    let x = fromIntegral column + 0.4 * (random01 seed 0 - 0.5),
+    let z = fromIntegral row + 0.4 * (random01 seed 1 - 0.5),
+    let r = 0.16 + 0.1 * random01 seed 2,
+    clearOf gardenHeroes x z r
+  ]
 
 sceneOne :: Scene
 sceneOne = Scene {
-  background = skyBackground,
-  objects =
-    floorTriangles (matte (Vec3 0.42 0.48 0.52)) ++
-    colorTarget (-1.15) 0.15 (-7.1) ++ [
-      SphereObj (Sphere (Vec3 (-1.15) (-0.15) (-5)) 1.05 (glass (Vec3 1 1 1))),
-      SphereObj (Sphere (Vec3 1.45 (-0.05) (-4.8)) 1.0 (mirror (Vec3 0.15 0.28 0.95))),
-      TriangleObj (Triangle (Vec3 0.25 (-1.2) (-6.3)) (Vec3 0.85 0.65 (-6.5)) (Vec3 1.45 (-1.2) (-6.3)) (matte (Vec3 0.22 0.72 1)))
-    ],
+  background = sky,
+  objects = floorTriangles (Vec3 0.48 0.51 0.55) ++ gardenSpheres ++ gardenHeroes,
   lights = [
-    AreaLight (Vec3 (-3) 4 (-2)) (Vec3 3 0 0) (Vec3 0 0 (-3)) (Vec3 1 0.96 0.9)
+    AreaLight (Vec3 (-4) 8 4) (Vec3 5 0 0) (Vec3 0 0 (-4)) (Vec3 0.9 0.88 0.84),
+    DirectionalLight (Vec3 (-1) (-1) (-0.5)) (Vec3 0.1 0.13 0.18)
   ]
 }
 
+galleryHeroes :: [Object]
+galleryHeroes = [
+    ball (-1.45) 1 1 (glass 0),
+    ball 1.45 1 1 (glass 0.09),
+    ball (-3.7) (-2.6) 1 (metal (Vec3 0.95 0.97 1) 0),
+    ball 3.7 (-2.6) 1 (metal (Vec3 0.95 0.97 1) 0.13)
+  ]
+
+galleryBackdrop :: [Object]
+galleryBackdrop = [
+    SphereObj (Sphere (Vec3 x (0.24 + fromIntegral row*0.48) (-1.5)) 0.24 (matte (paletteAt (column+row*3)))) |
+    (column,x) <- zip [0..] [-2.05,-1.45,-0.85,0.85,1.45,2.05],
+    row <- [0..3 :: Int]
+  ]
+
+galleryBorder :: [Object]
+galleryBorder = [
+    ball x z 0.22 (matte (paletteAt (column+row*5))) |
+    row <- [-4..3 :: Int], column <- [-5..5 :: Int],
+    let x = fromIntegral column * 1.1,
+    let z = fromIntegral row * 1.2,
+    abs x > 3 || z < -3,
+    clearOf galleryHeroes x z 0.22
+  ]
+
 sceneTwo :: Scene
 sceneTwo = Scene {
-  background = skyBackground,
-  objects =
-    floorTriangles (matte (Vec3 0.22 0.24 0.28)) ++
-    colorTarget 0 0.2 (-7.0) ++ [
-      SphereObj (Sphere (Vec3 0 (-0.1) (-4.25)) 1.1 ((glass (Vec3 1 1 1)) { transmissionRoughness = 0.24 })),
-      SphereObj (Sphere (Vec3 2.25 (-0.45) (-5.2)) 0.75 ((mirror (Vec3 0.95 0.95 1)) { reflectionRoughness = 0.28 })),
-      TriangleObj (Triangle (Vec3 (-2.25) (-1.2) (-3.15)) (Vec3 (-1.45) 0.05 (-4.05)) (Vec3 (-0.7) (-1.2) (-3.15)) (matte (Vec3 0.95 0.85 0.16)))
-    ],
+  background = sky,
+  objects = floorTriangles (Vec3 0.55 0.57 0.61) ++ galleryBackdrop ++ galleryBorder ++ galleryHeroes,
   lights = [
-    AreaLight (Vec3 (-1) 3.5 (-1.5)) (Vec3 3 0 0) (Vec3 0 0 (-2.5)) (Vec3 1 0.98 0.94)
+    AreaLight (Vec3 (-4) 7 4) (Vec3 5 0 0) (Vec3 0 0 (-4)) (Vec3 0.95 0.93 0.9),
+    DirectionalLight (Vec3 1 (-1) (-0.2)) (Vec3 0.08 0.1 0.14)
   ]
 }
+
+cameraOne :: Int -> Camera
+cameraOne h = Camera (16/9) h 0.38 1 (Vec3 8 2.2 12) (Vec3 0 0.95 0) (Vec3 0 1 0)
+
+cameraTwo :: Int -> Camera
+cameraTwo h = Camera (16/9) h 0.44 1 (Vec3 0 3.6 13) (Vec3 0 0.9 0) (Vec3 0 1 0)
