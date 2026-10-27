@@ -2,6 +2,8 @@
 
 Sphere and triangle intersections, Phong lighting, glossy reflections, rough
 refraction, area lights with soft shadows, jittered antialiasing, and BVH acceleration.
+An additional Monte Carlo path-tracing mode supports diffuse indirect lighting
+and sky illumination.
 
 ## Run
 
@@ -34,6 +36,51 @@ Each scene has its own composed camera. --eye X Y Z and --target X Y Z override
 the camera position and look-at point independently.
 The up vector is positive Y; viewing directly along that vector is rejected.
 Run with --help for the option summary.
+
+## Path Tracing
+
+The default --mode direct keeps the original Phong/direct-light renderer.
+--mode path selects the path tracer and a separate pair of sky-lit scenes:
+
+```sh
+nix develop -c cabal run raytracer -- --mode path --height 360 --samples 128 --depth 8 --seed 42
+```
+
+This writes path-scene1.ppm and path-scene2.ppm, preserving the direct-light
+scene outputs. --scene 1, 2, or both selects scenes within the chosen mode.
+--output and camera overrides work in either mode. For a quick room preview:
+
+```sh
+nix develop -c cabal run raytracer -- --mode path --scene 2 --height 144 --samples 32 --depth 6 --output /tmp/room.ppm
+```
+
+- Path scene 1: the sphere garden lit entirely by the sky.
+- Path scene 2: a room with red and green walls, neutral surfaces, and three
+  spheres. Light enters through the open front and a roof opening. Multiple
+  diffuse bounces transfer the wall colors onto nearby neutral surfaces.
+
+Path mode traces one continuation at each hit and averages independent paths
+per pixel. Diffuse directions use cosine-weighted hemisphere sampling. For a
+Lambertian surface, BRDF * cosine / PDF reduces to its albedo. The material's
+diffuse, reflection, and transmission weights determine branch probabilities;
+throughput compensates for that choice. Absorbed energy reduces throughput.
+The existing rough reflection/transmission cones remain artistic approximations,
+not a microfacet material model.
+
+The diffuse weight is (1 - reflectivity - transparency) * diffuse; diffuse
+and transmitted paths are tinted by baseColor, while mirrors and total internal
+reflection are untinted. Ambient, Phong specular, and shininess are unused in
+path mode. Sky radiance is returned whenever any path ray misses the geometry.
+
+--depth N permits at most N surface scatters in path mode. A miss still returns
+the sky at depth zero, but a surface reached with no bounces left returns black.
+Increasing depth admits more indirect paths; increasing samples reduces noise.
+Both integrators use BVH acceleration, seeded sampling, and linear color averaging.
+
+This first path tracer is environment-only: analytic point, directional, and
+area lights are used only in direct mode, and --shadow-samples has no effect in
+path mode. Emissive geometry and explicit light sampling are not implemented.
+The two path scenes deliberately have empty analytic light lists.
 
 --shadow-samples controls samples per area light at each intersection and must
 be positive. --seed selects an unsigned 64-bit seed (default 42). The same seed
@@ -75,6 +122,7 @@ it has no inverse-square falloff, emitter cosine factor, or visible emissive mes
 - app/Scenes.hs contains submission scenes, geometry helpers, and material presets.
 - app/Main.hs parses options and writes images.
 - src/Renderer.hs handles lighting and recursive rays.
+- src/PathTracer.hs handles probabilistically weighted paths and sky radiance.
 - src/Optics.hs contains reflection, refraction, and secondary-ray offsets.
 - src/Sampling.hs generates seeded jittered strata and cone directions.
 - src/Bounds.hs and src/Objects/Object.hs implement bounding boxes and BVH traversal.

@@ -23,7 +23,7 @@ common warnings
 library
     import:           warnings
     hs-source-dirs:   src
-    exposed-modules:  Bounds, Optics, Sampling, Camera, Color, Image, Interval, Point3, Light, Ray, Renderer, Scene, Vec3,
+    exposed-modules:  Bounds, Optics, PathTracer, Sampling, Camera, Color, Image, Interval, Point3, Light, Ray, Renderer, Scene, Vec3,
                       Objects.HitRecord,
                       Objects.Material,
                       Objects.Object,

@@ -1,4 +1,4 @@
-module Sampling (Seed, deriveSeed, random01, sampleOffsets, jitterDirection) where
+module Sampling (Seed, deriveSeed, random01, sampleOffsets, jitterDirection, cosineHemisphere) where
 
 import Data.Bits (xor, shiftR)
 import Data.Word (Word64)
@@ -26,10 +26,26 @@ sampleOffsets seed requested =
       stride = case [k | k <- candidates, gcd k count == 1] of
         k:_ -> k
         [] -> 1
+      -- Randomize axis pairing as well as positions within the strata.
+      phase = fromIntegral (mod (deriveSeed seed (fromIntegral (2*count+7))) (fromIntegral count))
       offset i jitter = (fromIntegral i + jitter) / fromIntegral count
   in [(offset i (random01 seed (fromIntegral (2*i))),
-       offset ((i * stride) `mod` count) (random01 seed (fromIntegral (2*i+1))))
+       offset ((i * stride + phase) `mod` count) (random01 seed (fromIntegral (2*i+1))))
      | i <- [0 .. count - 1]]
+
+-- PDF = cos(theta)/pi. The Lambertian BRDF and cosine cancel against this PDF.
+cosineHemisphere :: Seed -> Vec3 -> Vec3
+cosineHemisphere seed outward =
+  let n = unit outward
+      Vec3 _ _ nz = n
+      helper = if abs nz < 0.9 then Vec3 0 0 1 else Vec3 0 1 0
+      tangent = unit (n `cross` helper)
+      bitangent = n `cross` tangent
+      radiusSquared = random01 seed 0
+      radius = sqrt radiusSquared
+      angle = 2*pi*random01 seed 1
+  in unit (tangent *^ (radius*cos angle) +^ bitangent *^ (radius*sin angle)
+      +^ n *^ sqrt (1-radiusSquared))
 
 -- Uniform solid-angle cone, folded into the desired surface hemisphere.
 jitterDirection :: Seed -> Double -> Vec3 -> Vec3 -> Vec3

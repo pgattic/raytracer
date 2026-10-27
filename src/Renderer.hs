@@ -1,4 +1,4 @@
-module Renderer(RendererConfig(..), render) where
+module Renderer(Integrator(..), RendererConfig(..), render) where
 
 import Camera
 import Scene
@@ -12,13 +12,17 @@ import Interval
 import Light
 import Optics
 import Sampling
+import PathTracer
+
+data Integrator = DirectLighting | PathTracing deriving (Eq, Show)
 
 data RendererConfig = RendererConfig {
   rayBounds :: Interval,
   maxDepth :: Int,
   samplesPerPixel :: Int,
   shadowSamples :: Int,
-  renderSeed :: Seed
+  renderSeed :: Seed,
+  integrator :: Integrator
 }
 
 ambientContribution :: Material -> Color
@@ -114,10 +118,13 @@ rayColorWithDepth rendConf seed depth scene ray =
     rI = Interval rayEpsilon infinity
 
 rayColor :: RendererConfig -> Seed -> Scene -> Ray -> Color
-rayColor rendConf seed scene ray =
-  case hitScene scene ray (rayBounds rendConf) of
-    Nothing -> background scene ray
-    Just rec -> shade rendConf seed (maxDepth rendConf) scene ray rec
+rayColor rendConf seed scene ray
+  | integrator rendConf == PathTracing =
+      tracePath (maxDepth rendConf) seed scene (rayBounds rendConf) ray
+  | otherwise =
+      case hitScene scene ray (rayBounds rendConf) of
+        Nothing -> background scene ray
+        Just rec -> shade rendConf seed (maxDepth rendConf) scene ray rec
 
 averageColor :: [Color] -> Color
 averageColor colors =

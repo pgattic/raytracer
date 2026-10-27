@@ -15,6 +15,7 @@ import Objects.Triangle (Triangle(..), hitTriangle)
 import Ray
 import Renderer
 import Sampling
+import PathTracer
 import Scene
 import Light (Light(PointLight, AreaLight))
 import Vec3
@@ -70,7 +71,7 @@ main = do
       empty = Scene backdrop [] []
       glassScene = empty { objects = [SphereObj (Sphere (Vec3 0 0 (-3)) 1 clear)] }
       cam = Camera 1 9 2 1 (Vec3 0 0 0) (Vec3 0 0 (-1)) (Vec3 0 1 0)
-      config = RendererConfig (Interval 0.001 4) 8 1 16 42
+      config = RendererConfig (Interval 0.001 4) 8 1 16 42 DirectLighting
   assert "index-one glass preserves background" (and (zipWith nearVec (pixels (render config cam empty)) (pixels (render config cam glassScene))))
   let distant = TriangleObj (Triangle (Vec3 (-20) (-20) (-12)) (Vec3 20 (-20) (-12)) (Vec3 0 20 (-12))
         (opaque { baseColor = Vec3 1 0 0, ambient = 1 }))
@@ -115,4 +116,72 @@ main = do
         (clear { transmissionRoughness = 0.4 }))] }
   assert "glossy reflection changes render" (pixels (render config cam gradientScene) /= pixels (render config cam roughScene))
   assert "rough transmission changes render" (pixels (render config cam glassScene) /= pixels (render config cam frostedScene))
+  let up = unit (Vec3 1 2 3)
+      samples = [cosineHemisphere sampleSeed up | sampleSeed <- [0..16383]]
+      cosineMean = sum (map (.^ up) samples) / fromIntegral (length samples)
+  assert "cosine hemisphere normalized and above surface"
+    (all (\v -> near 1 (mag v) && v .^ up >= 0) samples)
+  assert "cosine sampling distribution" (abs (cosineMean - 2/3) < 0.01)
+  let firstY sampleSeed = case sampleOffsets sampleSeed 5 of
+        (_,y):_ -> floor (y*5) :: Int
+        [] -> -1
+  assert "pixel axis pairing varies across seeds"
+    (all (\bin -> any ((== bin) . firstY) [0..127]) [0..4])
+
+  let white = Vec3 1 1 1
+      black = Vec3 0 0 0
+      lambert = opaque { diffuse = 1, ambient = 100, specular = 100 }
+      panel mat = TriangleObj (Triangle (Vec3 (-100) (-100) (-1))
+                    (Vec3 100 (-100) (-1)) (Vec3 0 100 (-1)) mat)
+      constantSky = Scene (const white) [] []
+      planeScene mat = constantSky { objects = [panel mat] }
+      trace depthValue sampleSeed sceneValue = tracePath depthValue sampleSeed sceneValue bounds forward
+      colored = lambert { baseColor = Vec3 0.25 0.5 0.75 }
+  assert "diffuse surface receives sky radiance"
+    (nearVec (trace 1 42 (planeScene colored)) (Vec3 0.25 0.5 0.75))
+  assert "depth zero keeps visible sky" (nearVec (trace 0 42 constantSky) white)
+  assert "depth zero cannot scatter from surface" (nearVec (trace 0 42 (planeScene colored)) black)
+  let noSky = (planeScene colored) { background = const black, lights = lights lit }
+  assert "path mode has no artificial ambient or analytic direct light"
+    (nearVec (trace 6 42 noSky) black)
+  let enclosure = constantSky { objects = [SphereObj (Sphere (Vec3 0 0 0) 10 lambert)] }
+  assert "closed diffuse enclosure cannot see sky" (nearVec (trace 8 42 enclosure) black)
+  let meanColors colors = foldl' (+^) black colors /^ fromIntegral (length colors)
+      mixture = colored { reflectivity = 0.3, transparency = 0.2, diffuse = 0.8, refractiveIndex = 1 }
+      mixedMean = meanColors [trace 1 sampleSeed (planeScene mixture) | sampleSeed <- [0..16383]]
+      -- 0.3 mirror + (0.4 diffuse + 0.2 transmission) * albedo.
+      expectedMixed = white *^ 0.3 +^ baseColor mixture *^ 0.6
+  assert "mixture probability compensation" (mag (mixedMean -^ expectedMixed) < 0.015)
+  let tirRay = Ray (Vec3 0 0 (-2)) (unit (Vec3 0.9 0 0.435889894))
+      dielectric = colored { diffuse = 0, transparency = 1, refractiveIndex = 1.5 }
+  assert "path total internal reflection is untinted"
+    (nearVec (tracePath 1 42 (planeScene dielectric) bounds tirRay) white)
+  let reflectedBlocker = TriangleObj (Triangle (Vec3 (-100) (-100) 10)
+                           (Vec3 100 (-100) 10) (Vec3 0 100 10)
+                           (opaque { diffuse = 0 }))
+      mirrorScene = constantSky {
+        objects = [panel (opaque { reflectivity = 1 }), reflectedBlocker]
+      }
+  assert "path secondary rays exceed primary clipping range"
+    (nearVec (tracePath 1 42 mirrorScene (Interval rayEpsilon 2) forward) black)
+
+  let floorMat = lambert { baseColor = white }
+      redMat = lambert { baseColor = Vec3 0.8 0 0 }
+      floorA = TriangleObj (Triangle (Vec3 (-100) 0 (-100)) (Vec3 100 0 100) (Vec3 100 0 (-100)) floorMat)
+      floorB = TriangleObj (Triangle (Vec3 (-100) 0 (-100)) (Vec3 (-100) 0 100) (Vec3 100 0 100) floorMat)
+      wallA = TriangleObj (Triangle (Vec3 1 0 (-100)) (Vec3 1 100 (-100)) (Vec3 1 100 100) redMat)
+      wallB = TriangleObj (Triangle (Vec3 1 0 (-100)) (Vec3 1 100 100) (Vec3 1 0 100) redMat)
+      bleedingScene = accelerateScene (constantSky { objects = [floorA,floorB,wallA,wallB] })
+      floorRay = Ray (Vec3 0 1 0) (Vec3 0 (-1) 0)
+      floorMean depthValue = meanColors [
+        tracePath depthValue sampleSeed bleedingScene bounds floorRay | sampleSeed <- [0..8191]]
+      Vec3 red1 green1 blue1 = floorMean 1
+      Vec3 red2 green2 blue2 = floorMean 2
+  assert "second diffuse bounce transfers wall color"
+    (red2 > red1 + 0.1 && near green1 green2 && near blue1 blue2)
+  let pathConfig = config { integrator = PathTracing, samplesPerPixel = 16, maxDepth = 4 }
+      pathPixels = pixels (render pathConfig cam (planeScene colored))
+  assert "path rendering repeatability" (pathPixels == pixels (render pathConfig cam (planeScene colored)))
+  assert "path mode selected by renderer"
+    (all (nearVec (baseColor colored)) pathPixels)
   putStrLn "All regression tests passed."

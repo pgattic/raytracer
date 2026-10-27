@@ -1,4 +1,5 @@
-module Scenes (sceneOne, sceneTwo, cameraOne, cameraTwo) where
+module Scenes (sceneOne, sceneTwo, cameraOne, cameraTwo,
+               pathSceneOne, pathSceneTwo, pathCameraOne, pathCameraTwo) where
 
 import Camera
 import Color
@@ -131,3 +132,54 @@ cameraOne h = Camera (16/9) h 0.38 1 (Vec3 8 2.2 12) (Vec3 0 0.95 0) (Vec3 0 1 0
 
 cameraTwo :: Int -> Camera
 cameraTwo h = Camera (16/9) h 0.44 1 (Vec3 0 3.6 13) (Vec3 0 0.9 0) (Vec3 0 1 0)
+
+-- These scenes are lit exclusively by the environment in path mode.
+pathSceneOne :: Scene
+pathSceneOne = sceneOne { lights = [] }
+
+pathMatte :: Color -> Material
+pathMatte col = (matte col) { ambient = 0, diffuse = 1, specular = 0 }
+
+quad :: Vec3 -> Vec3 -> Vec3 -> Vec3 -> Material -> [Object]
+quad a b c d mat =
+  [TriangleObj (Triangle a b c mat), TriangleObj (Triangle a c d mat)]
+
+roofPanel :: Double -> Double -> Double -> Double -> Material -> [Object]
+roofPanel x0 x1 z0 z1 =
+  quad (Vec3 x0 4 z0) (Vec3 x1 4 z0) (Vec3 x1 4 z1) (Vec3 x0 4 z1)
+
+pathSceneTwo :: Scene
+pathSceneTwo =
+  let neutral = pathMatte (Vec3 0.74 0.74 0.72)
+      red = pathMatte (Vec3 0.75 0.08 0.06)
+      green = pathMatte (Vec3 0.06 0.6 0.3)
+      floorObjects = quad (Vec3 (-3) 0 2) (Vec3 3 0 2)
+                          (Vec3 3 0 (-4)) (Vec3 (-3) 0 (-4)) neutral
+      back = quad (Vec3 (-3) 0 (-4)) (Vec3 3 0 (-4))
+                  (Vec3 3 4 (-4)) (Vec3 (-3) 4 (-4)) neutral
+      left = quad (Vec3 (-3) 0 2) (Vec3 (-3) 0 (-4))
+                  (Vec3 (-3) 4 (-4)) (Vec3 (-3) 4 2) red
+      right = quad (Vec3 3 0 (-4)) (Vec3 3 0 2)
+                   (Vec3 3 4 2) (Vec3 3 4 (-4)) green
+      -- A large opening in the roof admits sky light deep into the room.
+      roofObjects = concat [
+          roofPanel (-3) (-1.6) (-4) 2 neutral,
+          roofPanel 1.6 3 (-4) 2 neutral,
+          roofPanel (-1.6) 1.6 (-4) (-2.8) neutral,
+          roofPanel (-1.6) 1.6 0.6 2 neutral
+        ]
+  in Scene {
+    background = \ray -> sky ray *^ 1.2,
+    objects = floorObjects ++ back ++ left ++ right ++ roofObjects ++ [
+      ball (-1.65) (-1.2) 0.95 (pathMatte (Vec3 0.82 0.82 0.82)),
+      ball 1.25 (-1.4) 0.85 (glass 0),
+      ball 0.2 0.8 0.45 (pathMatte (Vec3 0.12 0.22 0.7))
+    ],
+    lights = []
+  }
+
+pathCameraOne :: Int -> Camera
+pathCameraOne = cameraOne
+
+pathCameraTwo :: Int -> Camera
+pathCameraTwo h = Camera (16/9) h 0.5 1 (Vec3 0 2.05 7.5) (Vec3 0 1.5 (-1.1)) (Vec3 0 1 0)
